@@ -55,6 +55,7 @@ data(tankSimpleScale)
 systemArgs<-list(roofArea=100,
                  nPeople=1,
                  tankVol=2000,
+                 firstFlush=1,
                  write.file=FALSE,
                  metric="reliability")
 
@@ -106,6 +107,7 @@ data(oatScenarios)
 systemArgs=list(roofArea=50,
                  nPeople=1,
                  tankVol=3000,
+                 firstFlush=1,
                  write.file=FALSE,
                  metric="reliability")
 

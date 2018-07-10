@@ -42,6 +42,7 @@
 \seealso{See Also: \code{\link{scenarioGenerator}}, \code{\link{performanceSpaces}} and \code{\link{quickSpace}}}
 
 \examples{
+\dontrun{
 data(tankPlot)
 data(climdata2030)          #loading climate data for 2030 time slice
 
@@ -56,12 +57,21 @@ data(climdata2030)          #loading climate data for 2030 time slice
 #Create plotting arguments
 plotArgs<-list(title="Scenario neutral space with projections overlaid",
                ylim=c(0.7,1.3),
-               xlim=c(-2,2))
+               xlim=c(-2,2),
+               xtitle="Temp_ann_avg_m",
+               ytitle="P_ann_tot_m")
+
+climArgs<-list(performancelimits=NULL,
+               label=NULL,
+               slice=2030,
+               colour="black",
+               fill="performance")
 
 #Plot performance space with projections overlaid
 tank_overlay_plot=plotLayers(plot=tank_simpleScale_plot$plotEdit,
                              plotArgs=plotArgs,
                              climdata=climdata,
-                             climArgs=NULL)
+                             climArgs=climArgs)
 tank_overlay_plot
+}
 }

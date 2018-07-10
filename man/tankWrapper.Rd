@@ -16,11 +16,12 @@ A demo tank model with wrapper to tailor format to foreSIGHT
   \item{systemArgs}{a list to control the exposure space creation with the following components:
     \describe{
       \item{\code{roofArea}}{ roof area in m2}
-      \item{\code{nPeople}}{number of people using water.}
-      \item{\code{tankVol}}{tank volume in L.}
+      \item{\code{nPeople}}{number of people using water}
+      \item{\code{tankVol}}{tank volume in L}
+      \item{\code{firstFlush}}{first flush depth over roof in mm}
       \item{\code{write.file}}{logical. write output tank timeseries to file T/F?}
       \item{\code{fnam}}{string indicating name of file}
-      \item{\code{metric}}{string indicating what metric to report: volumetric reliability - "volRel", reliability - "reliability", storage efficiency - "storEff", system efficiency - "sysEff"}
+      \item{\code{metric}}{string indicating what metric to report: average daily deficit - "avDeficit", volumetric reliability - "volRel", reliability - "reliability", storage efficiency - "storEff", system efficiency - "sysEff"}
     }
   }
   \item{repID}{a number that is used of append file names to distiguish between replicates.}

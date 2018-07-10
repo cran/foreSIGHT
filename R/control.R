@@ -1,6 +1,7 @@
 #---------------------------------------------------------------------------------------------------------------------------------------
 scenarioGenerator<-function(obs=NULL,                           # data frame of observed data with column names compulsary [$year, $month, $day, $P,] additional [$Temp, $RH, $PET, $uz, $Rs] (or a subset of these)
                               modelTag=NULL,                    # scalar or vector of models to use
+                              modelInfoMod=list(),              # list of options for the stochastic models
                               attPerturb=NULL,                  # vector of perturbed attributes
                               attHold=NULL,                     # vector of held attributes
                               attPenalty=NULL,                  # vector of primary attributes (a penalty function is used to prioritise this subset of selected attributes)
@@ -53,7 +54,7 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
                   Plots=pathPlots,
                   Metadata=pathMetadata)
       
-      if(!isTRUE(dir.exists(pathLogfile))){
+      if(!isTRUE(dir.exists(paths$Logfile))){ #paths$Logfile
         dir.create(pathLogfile)
       }
     
@@ -63,7 +64,7 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
     if(IOmode=="verbose"){                          #send logfile to wd subfolder if IOmode="dev"
       file<-filename(IOmode=IOmode,arrayID=arrayID)
       file<-paste0(paths$Logfile,"/",file)
-    }else if (IOmode=="verbose"){
+    }else if (IOmode=="suppress"){
       file<-filename(IOmode=IOmode,arrayID=arrayID) #send logfile to tempdir if IOmode="suppress"
       file<-paste0(tempdir(),"/",file)
     }else{  
@@ -91,8 +92,6 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
                               optimArgs=optimArgs,
                               exSpArgs=exSpArgs,
                               file=file)
-
-
     progress("Argument input format OK",file)
     
     #CHECK FOR LOGIC IN ATTRIBUTE MODEL COMBOS
@@ -111,20 +110,32 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
     banner("CHECK FOR DATAFRAME INPUT",file)
     progress("Checking dataframe input...",file)
     inputcheck<-input_check(obs,file,simLengthNyrs)
+    obs=inputcheck$data                                      # USE NEW APPENDED/CHECKED DATA
     progress("Dataframe input OK",file)
 
     #GET ADDITIONAL MODEL INFO, ATT INFO & SORT (make into separate script/functions)
     nMod=length(modelTag)   
-    if(nMod==1){
-      modelInfo=list()
-      modelInfo[[modelTag[1]]]=get.model.info(modelTag[1])                     #even if 1 model still stored in list format
-    }else{
-      modelInfo=sapply(X = modelTag,FUN=get.model.info,USE.NAMES=TRUE)
+    modelInfo=get.multi.model.info(modelTag=modelTag)
+
+    #UPDATE MODELINFO IF NEEDED
+    for(mod in 1:nMod){
+      if(!is.null(modelInfoMod[[modelTag[mod]]])){
+        #modifyList
+        progress("Updating model info...",file)
+        defaultMods=list(minBound=NULL,maxBound=NULL,fixedPars=NULL)
+        modPars=modifyList(defaultMods,modelInfoMod[[modelTag[mod]]])
+        modelInfo[[modelTag[mod]]]=update.model.info(modelTag=modelTag[mod],
+                                                    modelInfo=modelInfo[[modelTag[mod]]],
+                                                    fixedPars=modPars$fixedPars,
+                                                    minUserBound=modPars$minBound,
+                                                    maxUserBound=modPars$maxBound,
+                                                    file=file)  #need to build in checks for this
+        # if(!is.na(modelInfo[[modelTag[mod]]]$fixedPars)
+      }
     }
-    
-    simPriority=sort(sapply(X=modelInfo,FUN=return.simPriority,USE.NAMES=TRUE)) #get simulation priority of each model
-    modelTag=names(simPriority)                                                 # Force simVar="P" to come first via sorting by $simPrority
-    simVar=sapply(X=modelInfo[modelTag],FUN=return.simVar,USE.NAMES=TRUE)       #???CREATE MODEL MASTER INFO - HIGHER LEVEL?
+
+    modelTag=update.simPriority(modelInfo=modelInfo)
+    simVar=sapply(X=modelInfo[modelTag],FUN=return.simVar,USE.NAMES=TRUE)       #?CREATE MODEL MASTER INFO - HIGHER LEVEL?
     attInfo=attribute.info.check(attSel=attSel)                                 # vector of selected attributes (strings)
     if(modelTag[1] == "Simple-ann"){simVar=attInfo$varType}
     attInd=get.att.ind(attInfo=attInfo,simVar=simVar)
@@ -134,42 +145,10 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
     #GET DATES DATA (and indexes for harmonic periods)
     banner("INDEXING DATES",file)
     progress("Indexing dates...",file)
-    obs=inputcheck$data                                      # USE NEW APPENDED/CHECKED DATA
-    yy=obs$year;mm=obs$month;dd=obs$day                      # STORE DATE VECTORS
+    dateExtnd=dateExtender(obs=obs,simLengthNyrs=simLengthNyrs,file=file,modelTag=modelTag)  #Extend dates if needed
+    datInd=mod.get.date.ind.extnd(obs=obs,dateExtnd=dateExtnd,modelTag=modelTag,modelInfo=modelInfo,simLengthNyrs=simLengthNyrs,file=file,southHemi=TRUE)
     
-    datInd=list()
-    datInd[["obs"]]=get.date.ind(dd=dd,mm=mm,yy=yy,nperiod=12,southHemi=TRUE)              #make obs based datInd
-    
-    #EXTEND DATES IF NEEDED
-    if(!is.null(simLengthNyrs)){
-      if(modelTag[[1]] != "Simple-ann"){
-        dateExtnd=extendDates(simLengthNyrs=simLengthNyrs,dd=dd,mm=mm,yy=yy)
-      }else{
-        dateExtnd=obs[,c("year","month","day")]                                              # make the same as observed
-        progress("Length of time series cannot be increased using simple scaling",file)
-      }
-    }else{
-      dateExtnd=obs[,c("year","month","day")]                                               # make the same as observed
-    }
-    
-    for(i in 1:nMod){
-      datInd[[modelTag[i]]]=get.date.ind(dd=dateExtnd$day,mm=dateExtnd$month,yy=dateExtnd$year,nperiod=modelInfo[[modelTag[i]]]$nperiod,southHemi=TRUE)          # FROM dateManager.R
-    }
-    
-    #add on warmup period of 1 year if stochastic (fix this up!!)
-    if(modelTag[[1]] != "Simple-ann"){
-      datePlusWarm=extendDates(simLengthNyrs=(datInd[[modelTag[i]]]$nyr+1),dd=dateExtnd$day,mm=dateExtnd$month,yy=dateExtnd$year)
-      datWarm=list()  #used for rainfall generation
-      for(i in 1:nMod){
-        datWarm[[modelTag[i]]]=get.date.ind(dd=datePlusWarm$day,mm=datePlusWarm$month,yy=datePlusWarm$year,nperiod=modelInfo[[modelTag[i]]]$nperiod,southHemi=TRUE)          # FROM dateManager.R
-        datInd[[modelTag[i]]]$i.mod=datWarm[[modelTag[i]]]$i.pp
-      }
-      rm(datWarm)
-    }
-
-    
-     progress("Dates indexed OK",file)
-    
+    progress("Dates indexed OK",file)
     #----------------------------------------
      #EXPOSURE SPACE GENERATION 
      banner("SAMPLING EXPOSURE SPACE",file)
@@ -240,14 +219,14 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
                                              datInd=datInd[["obs"]],
                                              attribute.funcs=attribute.funcs)
           }
-          attObs=unlist(attObs)
-
+          attObs=unlist(attObs); attObs=attObs[attSel]   #unlist attObs and make sure order is correct
+        
           progress(paste("Attributes of observed series - ",paste(attSel,": ",signif(attObs,digits=5),collapse = ", ",sep=""),sep=""),file)
           progress("Attributes calculated OK",file)   #NEED SOME ACTUAL CHECKING HERE BEFORE PRONOUNCING OK
 
           #PART 1: INITIAL CALIBRATION OF EACH MODEL
           #-INITIAL CALIBRATION OF SELECTED MODEL(S) - wrapper for alternate function
-         # initCalibPars=init.calib(data=obs[[simVar[i]]],modelTag=modelTag[i],modelInfo=modelInfo[[modelTag[i]]],datInd=datInd[[modelTag[i]]]) #for rain model only
+          #initCalibPars=init.calib(data=obs[[simVar[i]]],modelTag=modelTag[i],modelInfo=modelInfo[[modelTag[i]]],datInd=datInd[[modelTag[i]]]) #for rain model only
 
           #PART 2: OPTIMISING TO DETERMINE PARS
           #LOOP OVER EXPOSURE SPACE POINTS TO DETERMINE PARS
@@ -287,7 +266,7 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
               switch(exSpArgs$type,                  
                    "OAT" = {attApp=attRot[i]},  # rotate through attPrim
                            {attApp=attPrim}     # maintain attPrim
-            )
+                      )
             }
             
             sim[[i]]=simulateTarget(optimArgs=optimArgs,         #sim[[i]]$P, $Temp $attSim $targetSim
@@ -532,7 +511,7 @@ performanceSpaces<-function(data=NULL,
    plotArgsDefault$lowfill="red"
    plotArgsDefault$highfill="yellow"
    plotArgsDefault$contour=TRUE
-   plotArgsDefault$contourlevels=seq(0.6,0.8,0.01)
+   plotArgsDefault$contourlevels=NULL
 
   if(!is.null(plotArgs)){
    plotArgs=modifyList(plotArgsDefault,plotArgs)
@@ -572,6 +551,9 @@ performanceSpaces<-function(data=NULL,
     }
   }
 
+  perfMap=cbind(targetMat,performance)
+  p1$perfDat=perfMap
+  
   #p1 is a list of an editable plot "plotEdit" and a final plot_grid cowlplot "plot"
   return(p1)
 
@@ -646,12 +628,12 @@ plotLayers<-function(plot=NULL,
     
     
 
-    p1<-p1+geom_point(data=climdata,aes(x = climdata[,x], y =climdata[,y]),colour=climArgs$colour,size=2.5,shape=16)
-  
+    p1<-p1+ggplot2::geom_point(data=climdata,aes(x = climdata[,x], y =climdata[,y]),colour=climArgs$colour,size=2.5,shape=16)
+  #ok here
     
     if(!is.null(climArgs$fill)){
       performance=NULL
-      if(climArgs$fill=="performance"){
+      if(climArgs$fill=="performance"){ #ok
         p1<-p1+geom_point(data=climdata,aes(x = climdata[,x], y =climdata[,y],colour=performance),size=2.5)+
                scale_colour_continuous(limits=c(plotArgs$performancelimits[1], plotArgs$performancelimits[2]),low="red", high="yellow",guide="none")+
                geom_point(data=climdata,aes(x = climdata[,x], y =climdata[,y]),colour="black",size=3,shape=1)

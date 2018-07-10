@@ -10,6 +10,7 @@ Produces the data needed for an exposure space of requested climate variables, a
 \usage{
 scenarioGenerator(obs = NULL,
                   modelTag = NULL,
+                  modelInfoMod=list(),
                   attPerturb = NULL,
                   attHold=NULL,
                   attPenalty = NULL,
@@ -38,6 +39,7 @@ scenarioGenerator(obs = NULL,
 \arguments{
   \item{obs}{A dataframe of observed climate data in the form \emph{Year Month Day P Temp}.}
   \item{modelTag}{A character vector of which stochastic models to use to create each climate variable.Supported tags are shown in \code{\link{modelTag}}}
+  \item{modelInfoMod}{A list containing information for modifying stochastic model bounds and defining fixed parameters.} 
   \item{attPerturb}{A character vector of climate attributes to hold at a target. A list of all supported attributes can be found under \code{\link{attSel}}}
   \item{attHold}{A character vector of climate attributes to hold at a target. A list of all supported attributes can be found under \code{\link{attSel}}}
   \item{attPenalty}{A character vector of climate attributes to place specific focus on during targeting via the use of a penalty function during the optimisation process.}
@@ -49,7 +51,7 @@ scenarioGenerator(obs = NULL,
       \item{\code{maxFitness}}{a value of the stopping criteria. Defaults to 0.001}
       \item{\code{popSize}}{a value of the population size. Defaults to 100}
       \item{\code{run}}{a value of an alternative stopping criteria - consecutive runs without improvement in fitness. Defaults to 0.001}
-      \item{\code{seed}}{a value of the random seed. Defaults to NULL}
+      \item{\code{seed}}{a value of the random seed. Defaults to 1234.}
       \item{\code{parallel}}{specifies if parallel computing should be used. Defaults to False. Can be set to the number of desired cores, or \code{TRUE}, where it will detect the number of available cores and run. }
       \item{\code{keepBest}}{specifies if the optimisation should keep the best solution in each generation. Defaults to TRUE.}
       \item{\code{lambda.mult}}{A multiplier used during the optimisation for primary attributes. Defaults to zero.}

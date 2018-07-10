@@ -16,6 +16,7 @@
 # systemArgs<-list(roofArea=50,   
 #                  nPeople=1,
 #                  tankVol=3000,
+#                  firstFlush=1,
 #                  write.file=T,
 #                  fnam="inception.csv",
 #                  metric="reliability")
@@ -36,6 +37,7 @@ tankWrapper<-function(data=NULL,
                                roofArea=systemArgs$roofArea,   
                                nPeople=systemArgs$nPeople,
                                tankVol=systemArgs$tankVol,
+                               firstFlush=systemArgs$firstFlush,
                                write.file=systemArgs$write.file,
                                fnam=filename)[[systemArgs$metric]]
   
@@ -50,6 +52,7 @@ tankWrapper<-function(data=NULL,
 tank_model<-function(roofArea=50,   #Roof area in m2
                      nPeople=1,     #No of people(?)
                      tankVol=3000,  #tank volume in L
+                     firstFlush=1,  #first flush diverter size in mm
                      rainTS=NULL,   #daily rain time series
                      tempTS=NULL,   #daily temperature time series
                      date=NULL     #date - data.frame c("year","month","day")
@@ -67,8 +70,8 @@ tank_model<-function(roofArea=50,   #Roof area in m2
   initTankVol=tankVol/2.0 #start tank half full
   
   #DEMAND...
-  indoorDemand=10*nPeople         #random constant indoor demand
-  outdoorDemandSum=739*nPeople    
+  indoorDemand=10*nPeople         #constant indoor demand (toilet flushing)
+  outdoorDemandSum=739    
   seasPattern=c(0.229,0.188,0.142,0.064,0.030,0,0.001,0.007,0.014,0.049,0.107,0.171) #proportions from Goyder household water use report
   
   outdoorDemand=rep(NA,nday)
@@ -77,19 +80,19 @@ tank_model<-function(roofArea=50,   #Roof area in m2
     ind=which(date$month == i)
     outdoorDemand[ind]=seasPattern[i]*outdoorDemandSum
   }
-
+  
   #upper temp threshold - lower temp threshold
-  lowTempThresh=10; upTempThresh=28
+  lowTempThresh=12; upTempThresh=28
   indUp=which(tempTS>=upTempThresh)              # made up temperature multipliers (Masters report foudn above 28 degs more watering)
   outdoorDemand[indUp]=outdoorDemand[indUp]*1.25
   indLow=which(tempTS<=lowTempThresh)
-  outdoorDemand[indLow]=outdoorDemand[indLow]*0.75
+  outdoorDemand[indLow]=outdoorDemand[indLow]*0.6
   
   #combined demand
   demand=rep(indoorDemand,nday)+outdoorDemand
   
   #FIRST FLUSH  -removed at the start of each storm 
-  divertAmount=1*roofArea   #1mm x roof area (Ls)
+  divertAmount=firstFlush*roofArea   #1mm x roof area (Ls)
   
   
   #HOW MUCH FLOW?
@@ -101,7 +104,7 @@ tank_model<-function(roofArea=50,   #Roof area in m2
   if(inflow[1]>0){stormDur[1]=1}else{stormDur[1]=0} #assume day prior to start is dry
   for(i in 2:nday){
     if(inflow[i]>0){ # wet day today
-        stormDur[i]=stormDur[i-1]+1       #wet -wet or dry-wet
+      stormDur[i]=stormDur[i-1]+1       #wet -wet or dry-wet
     }else{           # dry day today
       stormDur[i]=0  # dd or wd pattern
     }
@@ -171,7 +174,7 @@ tank_model<-function(roofArea=50,   #Roof area in m2
         tankSpill[i]=0
         supply[i]=demand[i]
         tankInflow[i]=inflow[i]                             # all inflow travels through tank
-
+        
       }
     }
   }
@@ -181,28 +184,30 @@ tank_model<-function(roofArea=50,   #Roof area in m2
 
 
 tankPerformance<-function(data=NULL,
-                      roofArea=50,   
-                      nPeople=1,
-                      tankVol=3000,
-                      write.file=TRUE,
-                      fnam="tankperformance.csv"
-                      
+                          roofArea=50,   
+                          nPeople=1,
+                          tankVol=3000,
+                          firstFlush=1,
+                          write.file=TRUE,
+                          fnam="tankperformance.csv"
+                          
 ){
   out=tank_model(roofArea=roofArea,
-             nPeople=nPeople,
-             tankVol=tankVol,
-             rainTS=data$P,
-             tempTS=data$Temp,
-             date=data[,c("year","month","day")])
+                 nPeople=nPeople,
+                 tankVol=tankVol,
+                 firstFlush=firstFlush,
+                 rainTS=data$P,
+                 tempTS=data$Temp,
+                 date=data[,c("year","month","day")])
   
   # to test need to write to csv
   if(write.file==TRUE){
     write.csv(out, file=fnam, quote=F, row.names=F)  #write tank info to file
   }
-
+  
   #-----tank model eval - sort of based on university of warwick metrics--------
   #reliability - fraction of days (total demand) met nSatisfied/nday
-  reliability = length(which(out$demand==out$supply))/nrow(data)
+  reliability = length(which(out$demand==out$supply))/length(out$supply)
   
   #Totals (first year removed)
   Qin_tot=sum(out$tankInflow)
@@ -216,8 +221,13 @@ tankPerformance<-function(data=NULL,
   storEff=(Qspill_tot/Qin_tot)*100
   #volumetric reliability
   volRel=sum(out$supply)/sum(out$demand)
+  #Av. water stored by tank on a daily basis (av. tank level)
+  avTankStor=sum(out$tankVolSim)/length(out$tankVolSim)
+  #avDeficit (max(demand-supply,0)/ndays)
+  temp=(out$demand-out$supply);temp[which(temp<0)]=0
+  avDeficit=sum(temp)/length(temp)
   
-
-  return(list(volRel=volRel,reliability=reliability,sysEff=sysEff,storEff=storEff))
+  
+  return(list(volRel=volRel,reliability=reliability,sysEff=sysEff,storEff=storEff,avTankStor=avTankStor,avDeficit=avDeficit))
 }
 

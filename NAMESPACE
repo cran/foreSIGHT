@@ -6,6 +6,8 @@ export(quickSpace)
 export(exSpArgsVisual)
 export(tankWrapper)
 export(tankPerformance)
+export(modCalibrator)
+export(modSimulator)
 
 import(GA)
 import(zoo)
@@ -22,7 +24,7 @@ importFrom("ggplot2","aes","coord_cartesian","element_blank",
              "geom_text","geom_tile","ggplot","guide_colorbar",
              "guides","margin","scale_colour_continuous","scale_color_continuous","scale_fill_continuous",
              "scale_fill_gradient","scale_x_continuous","scale_y_continuous",
-             "stat_contour","theme","unit","xlab","xlim","ylab","ylim")
+             "stat_contour","theme","unit","xlab","xlim","ylab","ylim","stat")
 
 
 importFrom(directlabels,geom_dl)
@@ -32,7 +34,7 @@ importFrom("grDevices", "adjustcolor", "col2rgb", "contourLines",
 importFrom("graphics", "axis", "barplot", "boxplot", "bxp", "legend",
              "lines", "mtext", "par", "polygon", "text", "title")
 importFrom("stats", "loess", "median", "predict", "quantile", "rgamma",
-             "runif", "sd")
+             "runif", "sd", "rnorm","acf","na.pass")
 importFrom("utils", "modifyList", "read.table", "write.table", "write.csv")
 
 importFrom("moments","skewness")
