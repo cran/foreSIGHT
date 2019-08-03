@@ -13,7 +13,6 @@ import(GA)
 import(zoo)
 import(doParallel)
 
-importFrom(cowplot,ggsave)
 importFrom(cowplot,ggdraw)
 importFrom(cowplot,draw_label)
 importFrom(cowplot,plot_grid)

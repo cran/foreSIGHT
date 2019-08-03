@@ -121,7 +121,7 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
     for(mod in 1:nMod){
       if(!is.null(modelInfoMod[[modelTag[mod]]])){
         #modifyList
-        progress("Updating model info...",file)
+        if(mod==1) progress("Updating model info...",file)
         defaultMods=list(minBound=NULL,maxBound=NULL,fixedPars=NULL)
         modPars=modifyList(defaultMods,modelInfoMod[[modelTag[mod]]])
         modelInfo[[modelTag[mod]]]=update.model.info(modelTag=modelTag[mod],
@@ -136,11 +136,12 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
 
     modelTag=update.simPriority(modelInfo=modelInfo)
     simVar=sapply(X=modelInfo[modelTag],FUN=return.simVar,USE.NAMES=TRUE)       #?CREATE MODEL MASTER INFO - HIGHER LEVEL?
-    attInfo=attribute.info.check(attSel=attSel)                                 # vector of selected attributes (strings)
+    attInfo=attribute.info.check(attSel=attSel,attPrim=attPrim)                                 # vector of selected attributes (strings)
     if(modelTag[1] == "Simple-ann"){simVar=attInfo$varType}
     attInd=get.att.ind(attInfo=attInfo,simVar=simVar)
     attInfo=update.att.Info(attInfo=attInfo,attInd=attInd,modelTag=modelTag,simVar=simVar) #add extra level for easier model mangmt
     if(modelTag[1] != "Simple-ann"){nParTot=0;for(i in 1:nMod){nParTot=nParTot+modelInfo[[i]]$npars}}                      #total number of pars
+
     
     #GET DATES DATA (and indexes for harmonic periods)
     banner("INDEXING DATES",file)
@@ -297,6 +298,7 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
               parSim=sim[[i]]$parS
               attValue=sim[[i]]$attSim  #NEW
               req=targetMat[i,]
+              objScore=sim[[i]]$score
               
               simTarget[length(attSel)+1]=parSim[nParTot+1]=attValue[length(attSel)+1]=req[length(attSel)+1]=arrayID
               simTarget[length(attSel)+2]=parSim[nParTot+2]=attValue[length(attSel)+2]=req[length(attSel)+2]=seedCatalogue[i]
@@ -305,12 +307,14 @@ scenarioGenerator<-function(obs=NULL,                           # data frame of 
               value=t(matrix(attValue))
               param=t(matrix(parSim))
               request=t(matrix(req))
+              fitnesses=t(matrix(objScore))
               
               #WRITE SIMS TO CSV FILE
               write.table(targ,paste0("target",i,".csv"),append=FALSE,col.names=FALSE,row.names=FALSE,sep=",")
               write.table(value,paste0("value",i,".csv"),append=FALSE,col.names=FALSE,row.names=FALSE,sep=",")
               write.table(param,paste0("pars",i,".csv"),append=FALSE,col.names=FALSE,row.names=FALSE,sep=",")
               write.table(request,paste0("request",i,".csv"),append=FALSE,col.names=FALSE,row.names=FALSE,sep=",")
+              write.table(fitnesses,paste0("fitness",i,".csv"),append=FALSE,col.names=FALSE,row.names=FALSE,sep=",")
               
               simDat=makeOutputDataframe(data=sim[[i]],dates=dateExtnd,simVar=simVar,modelTag=modelTag[1])
               write.table(simDat,file=paste0("scenario",i,".csv"),row.names=FALSE,quote = FALSE,sep=",")
@@ -538,7 +542,7 @@ performanceSpaces<-function(data=NULL,
   } else if (plotTag=="OAT") {
       # colnames(simTarget)<-attSel
       # p1<-oatplots(targetMat=targetMat,performance=performance,samp=data$exSpArgs$samp)
-      p1<-oatplots(targetMat=targetMat,performance=performance,attPerturb=attPerturb,exSpArgs=exSpArgs)
+      p1<-oatplots(targetMat=targetMat,performance=performance,attPerturb=attPerturb,exSpArgs=exSpArgs,plotArgs=plotArgs)
       if(IOmode=="verbose"){
         cowplot::save_plot(paste0(path,"/OATPlots.pdf"),p1,base_width = 14,base_height = 7)
       }

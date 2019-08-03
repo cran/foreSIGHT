@@ -76,7 +76,7 @@ get.attribute.info<-function(modelTag=NULL # attribute name
 ){
   #SET UP ATTRIBUTE RELATED PARAMETERS
   switch(modelTag,
-         "Simple-ann" = {ValidAttributes=attributelist[c(1,8)]    # vector of inappropriate models to achieve attribute
+         "Simple-ann" = {ValidAttributes=attributelist[c(1,8,37,42,43,112,113)]    # vector of inappropriate models to achieve attribute
          },
          "P-ann-wgen" = {ValidAttributes=attributelist[c(1:6,12:14,16:17,36,37,47)]    # vector of inappropriate models to achieve attribute
          },

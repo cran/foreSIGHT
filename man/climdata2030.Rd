@@ -7,7 +7,7 @@ Example climate projection data
 \description{
 A dataframe of climate projection data for superposition on performance spaces via plotLayers
 }
-\usage{climdata}
+%\usage{climdata}
 \format{
   climdata is a dataframe with 12 rows and 3 columns
   \describe{

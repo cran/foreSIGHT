@@ -1,5 +1,5 @@
 Package: foreSIGHT
-Version: 0.9.6
+Version: 0.9.8
 Depends: R (>= 3.3.0),GA (>= 3.0.2), zoo
 Imports: doParallel, ggplot2 (>= 3.0.0), directlabels, cowplot, stats,
         graphics, grDevices, utils, moments
@@ -20,6 +20,6 @@ Description: A tool to create hydroclimate scenarios, stress test systems and vi
 License: GPL-3
 NeedsCompilation: no
 VignetteBuilder: knitr
-Packaged: 2018-07-10 07:07:36 UTC; Phil
+Packaged: 2019-08-03 07:57:00 UTC; a1160755
 Repository: CRAN
-Date/Publication: 2018-07-10 08:00:26 UTC
+Date/Publication: 2019-08-03 23:10:02 UTC

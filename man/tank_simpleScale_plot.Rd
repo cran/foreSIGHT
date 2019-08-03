@@ -7,7 +7,7 @@ Example plot of tank model stress tested using simple scaling
 \description{
 A list of plots displaying the tank model stress tested using simple scaling for use in example of \code{\link{plotLayers}}.
 }
-\usage{tank_simpleScale_plot}
+%\usage{data(tank_simpleScale_plot)}
 \format{
   tank_simpleScale_plot is a list of plots containing
   \describe{

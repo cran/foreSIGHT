@@ -59,9 +59,21 @@ switch_simulator<-function(type=NULL,          # what vartype is being simulated
                                   initCalibPars=initCalibPars, 
                                   wdSeries=wdSeries,      
                                   resid_ts=resid_ts,
-                                  seed=seed)
+                                  seed=seed,
+                                  trunc=0)
            
                  },
+         "Radn" = { TS_WGEN_master(parS=parS,         
+                                  modelTag=modelTag,      
+                                  modelInfo=modelInfo,
+                                  datInd=datInd,        
+                                  initCalibPars=initCalibPars, 
+                                  wdSeries=wdSeries,      
+                                  resid_ts=resid_ts,
+                                  seed=seed,
+                                  trunc=0)
+           
+         },
          
          # "RH" = { TS_WGEN_master(parS=parS,         
          #                         modelTag=modelTag,      
@@ -310,7 +322,8 @@ TS_WGEN_master<- function(parS=NULL,         # vector of pars (will change in op
                           initCalibPars=NULL, # vector of pars from initial baseline calibration
                           wdSeries=NULL,      # rain  series
                           resid_ts=NULL,
-                          seed=NULL
+                          seed=NULL,
+                          trunc=NULL
 ){
   #Converts supplied pars into required format (e.g. if harmonic applied)
   par=simHarTS.parmanager(parS=parS,modelTag=modelTag,modelInfo=modelInfo,initCalibPars=initCalibPars)
@@ -331,6 +344,11 @@ TS_WGEN_master<- function(parS=NULL,         # vector of pars (will change in op
                       resid_ts=resid_ts,        # leave capacity to generate or receive residuals
                       seed=seed                 # seed for residuals generation
   )
+  #Make data below threshold zero (i.e. no negative radiation)
+  if(!is.null(trunc)){
+   badIndx=which(sim$sim<trunc)
+   if(length(badIndx)>0){sim$sim[badIndx]=0}
+  }
   
   return(sim)
 }

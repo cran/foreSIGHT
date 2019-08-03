@@ -7,7 +7,7 @@ One-at-a-time testing scenarios for use in tank model example
 \description{
 A list of example one-at-a-time testing scaling scenarios 
 }
-\usage{oat_out}
+%\usage{data(oat_out)}
 
 %\details{
 %%  ~~ If necessary, more details than the __description__ above ~~

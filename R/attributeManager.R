@@ -13,15 +13,19 @@
 
 
 #---------------------------------------------------------------------------------------
+
+
+threshWD=0.999
+
 #ATTRIBUTE FUNCTION LIST - CAN CALL SPECIFIC ATTRIBUTE CALCS FROM THE FUNCTION LIST
 #list of attribute calculation functions - NB: all must have similar/same arguments
 #used via lappply (attribute.funcs[attSel], function(f) f(data,datInd)) - return labelled list of outputs
 #NEED TO THINK ABOUT WHAT ENVIRONMENT THIS IS STORED IN. #
 attribute.funcs=list(
   P_ann_tot_m=function(data,datInd) extractor.summaryMean(func=sum,data=data,indx=datInd$i.yy,nperiod=datInd$nyr),                       # function labelled "Ptot_m" in list #get.tot(data)/datInd$nyr
-  P_ann_dyWet_m=function(data,datInd) get.wet.average(data,threshold=0),            # function labelled "dyWet_m" in list 
+  P_ann_dyWet_m=function(data,datInd) get.wet.average(data,threshold=threshWD),            # function labelled "dyWet_m" in list 
   P_ann_dyAll_m=function(data,datInd) get.wet.average(data,threshold=-999), 
-  P_ann_nWet_m=function(data,datInd) extractor.summaryMean(func=get.nwet,data=data,indx=datInd$i.yy,nperiod=datInd$nyr,threshold=0),  
+  P_ann_nWet_m=function(data,datInd) extractor.summaryMean(func=get.nwet,data=data,indx=datInd$i.yy,nperiod=datInd$nyr,threshold=threshWD),  
   
   P_ann_DSD_m=function(data,datInd) get.cdd(data,datInd$i.yy,datInd$nyr),            # function labelled "annDSD_m" in list  
   P_ann_P99_m=function(data,datInd) extractor.summaryMean(func=get.quantile,data=data,indx=datInd$i.yy,nperiod=datInd$nyr,quant=0.99),
@@ -216,7 +220,8 @@ attribute.calculator<-function(attSel=NULL,         #list of evaluated attribute
 }
 
 #ATTRIBUTE AUX INFO (determine attribute type and if approved combo with model used)
-attribute.info.check<-function(attSel=NULL  # vector of selected attributes (strings)
+attribute.info.check<-function(attSel=NULL,  # vector of selected attributes (strings)
+                               attPrim=NULL
                               #simVar=NULL    # vector of variables simulated using models e.g. c("P","Temp")
                               # modelTag=NULL # model selected
 ){
@@ -229,6 +234,23 @@ attribute.info.check<-function(attSel=NULL  # vector of selected attributes (str
   #ASSIGN TARGET TYPE (IF P USE "FRAC", IF T USE "DIFF")
   attInfo$targetType=vapply(attInfo$varType,FUN=get.target.type,FUN.VALUE=character(1),USE.NAMES=FALSE)
   
+  #FIND WHICH ARE PRIMARY
+  if(is.null(attPrim)){
+    attInfo$primType=rep(FALSE,nAtt)
+    attInfo$primMult=rep(0,nAtt)
+  }else{
+    get.ind<-function(x,y){which(x == y)}     # quick function to find which are primary attributes
+    primInd=vapply(attPrim,FUN=get.ind,FUN.VALUE=numeric(1),x=attSel,USE.NAMES = FALSE)  #Indices of primary attributes
+    attInfo$primType=rep(FALSE,nAtt)
+    attInfo$primType[primInd]=TRUE   #mark primary ones 'TRUE'
+    spot=NULL
+    for(i in 1:length(attPrim)){
+      spot=c(spot,(which(attSel==attPrim[i])))
+    }
+    attInfo$primMult=rep(0,nAtt)
+    attInfo$primMult[spot]=spot
+  }
+
   #CHECK FOR INVALID MODEL CHOICE - returns a logical for each attribute
   # attInfo$modelInvalid=vapply(attSel,FUN=check.attribute.model.combo,FUN.VALUE=logical(1),USE.NAMES=FALSE,modelTag=modelTag)
   
@@ -248,6 +270,8 @@ get.att.ind<-function(attInfo=NULL,
   return(attInd)
 }
 
+
+
 update.att.Info<-function(attInfo=NULL,
                           attInd=NULL,
                           modelTag=NULL,
@@ -257,6 +281,8 @@ update.att.Info<-function(attInfo=NULL,
     for(i in 1:length(modelTag)){
       attInfo[[modelTag[i]]]$varType=attInfo$varType[attInd[[simVar[i]]]]
       attInfo[[modelTag[i]]]$targetType=attInfo$targetType[attInd[[simVar[i]]]]
+      attInfo[[modelTag[i]]]$primType=attInfo$primType[attInd[[simVar[i]]]]
+      attInfo[[modelTag[i]]]$primMult=attInfo$primMult[attInd[[simVar[i]]]]
     }
   return(attInfo)
 }

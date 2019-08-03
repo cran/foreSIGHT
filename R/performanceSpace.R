@@ -70,7 +70,7 @@ heatPlot<-function(plotArgs=plotArgs,
 }
 
 #Wrapper for making each OAT panel
-plotwrapperoat<-function(data=NULL){
+plotwrapperoat<-function(data=NULL, plotArgs=NULL){
   p1 <- ggplot(data=data,
                aes(x=data[,1],y=data[,2]))+ #edited 23/6/2018 for ggplot compatability
                geom_line() +
@@ -79,20 +79,21 @@ plotwrapperoat<-function(data=NULL){
                theme(panel.border = element_rect(colour = "black",size=1,linetype="solid",fill=NA))+
                xlab(tagBlender(names(data)[1]))+
                ylab(names(data)[2])+
-               ylim(0,1)
+               ylim(plotArgs$performancelimits[1],plotArgs$performancelimits[2])
 }
 
 oatplots<-function(targetMat=NULL,
                    attPerturb=NULL,
                    performance=NULL,
-                   exSpArgs=NULL
+                   exSpArgs=NULL,
+                   plotArgs=NULL
                    ){
   
   #No. of things perturbed
   nAtts=length(attPerturb)
   
   #stitch
-  targetPerf<-data.frame(targetMat,performance)  
+  targetPerf<-data.frame(targetMat[,attPerturb],performance)  
   
   #get indexes at which to chop targetMat 
   chop=rep(NA,(nAtts))
@@ -104,7 +105,7 @@ oatplots<-function(targetMat=NULL,
     dflist[[i]]=targetPerf[(chop[i]-exSpArgs$samp[i]+1):chop[i],c(i,(nAtts+1))]
   }
   #PLOT OATIES
-  myplots <- lapply(X=dflist,FUN=plotwrapperoat)  # new empty list
+  myplots <- lapply(X=dflist,FUN=plotwrapperoat,plotArgs)  # new empty list
   p4 <- cowplot::plot_grid(plotlist=myplots,ncol=nAtts)
   return(p4)
 }

@@ -7,7 +7,7 @@ Observations for demo tank model examples and vignette
 \description{
 Dataset of observations for tank model examples
 }
-\usage{modelTag}
+%\usage{data(tank_obs)}
 \format{A dataframe of observed climate data in the form \emph{Year Month Day P Temp}.}
 %\details{
 %%  ~~ If necessary, more details than the __description__ above ~~

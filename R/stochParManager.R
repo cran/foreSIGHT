@@ -299,7 +299,7 @@
                                                 "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
                                                 "WD-sCycle-m","WD-sCycle-amp","WD-sCycle-ang")
                               modelInfo$minBound=c(0.45,7.0,1.0,-0.05,0.9,0.1,-1.6) #Placeholder bounds
-                              modelInfo$maxBound=c(0.9,28.0,9.0,0.81,4.9,1.4,3.15)
+                              modelInfo$maxBound=c(0.9,29.0,10.0,0.81,4.9,1.4,3.15)
          },
          #--- MORE VERSIONS COMING ---
 
