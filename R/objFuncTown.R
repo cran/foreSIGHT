@@ -27,9 +27,13 @@ objFuncMC<-function(attSel= NULL,     # vector of selected attributes
   dist=eucDist(target=target,simPt=simPt)
   
   primInd=which(attInfo$primType==TRUE)
-  penalty.score=penalty.func(target=target[primInd],simPt=simPt[primInd],lambda=lambda[attInfo$primMult]) 
-  
-  score=-dist-penalty.score
+  if(length(primInd)>0){
+    penalty.score=penalty.func(target=target[primInd],simPt=simPt[primInd],lambda=lambda[attInfo$primMult]) 
+    score=-dist-penalty.score
+  }else{
+    score=dist
+  }
+
   
   
   # #FIND RELEVANT ATTPRIMS
