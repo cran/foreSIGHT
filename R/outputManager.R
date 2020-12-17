@@ -80,30 +80,32 @@ saveTarget<-function(data=NULL,       # data[[i]]  ->    $P, $Temp $attSim $targ
   return(fnam)
 }
 
-#simpleSaveTarget
-simpleSaveTarget<-function(data=NULL,       # data[[i]]$P, $Temp $attSim $targetSim
-                           dates=NULL,      # data frame dates info mm,dd,yy
-                           simVar=NULL,     # vector of variables simulated
-                           attSel=NULL,     # vector of selected attributes
-                           target=NULL,      # vector coordinates of targets
-                           modelTag=NULL,
-                           modelInfo=NULL,
-                           paths=NULL
-){
-
-  #MAKE FILENAME (SANS .CSV EXTENSION)
-  fnam=nameMaker(attSel=attSel,target=target)
-
-  #MAKE OUTPUTTED DATAFRAME
-  simDat=makeOutputDataframe(data=data,dates=dates,simVar=simVar,modelTag=modelTag)
-  
-  #WRITE OUTPUT CSV
-  write.table(simDat,file=paste(paths$CSV,"/",fnam,".csv",sep=""),row.names=FALSE,quote = FALSE,sep=",")
-  
-  #WRITE TO RDATA
-  save(simDat,modelTag,modelInfo,attSel,target,file=paste(paths$RData,"/",fnam,".RData",sep=""))
-  return(fnam)
-}
+# #simpleSaveTarget
+# simpleSaveTarget<-function(data=NULL,       # data[[i]]$P, $Temp $attSim $targetSim
+#                            dates=NULL,      # data frame dates info mm,dd,yy
+#                            simVar=NULL,     # vector of variables simulated
+#                            attSel=NULL,     # vector of selected attributes
+#                            target=NULL,      # vector coordinates of targets
+#                            modelTag=NULL,
+#                            modelInfo=NULL,
+#                            paths=NULL,
+#                            suffixFileName = NULL
+# ){
+# 
+#   # MAKE FILENAME (SANS .CSV EXTENSION)
+#   # fnam=nameMaker(attSel=attSel,target=target)
+#   fnam = paste0("sim_", suffixFilename)
+# 
+#   #MAKE OUTPUTTED DATAFRAME
+#   simDat=makeOutputDataframe(data=data,dates=dates,simVar=simVar,modelTag=modelTag)
+#   
+#   #WRITE OUTPUT CSV
+#   write.table(simDat,file=paste(paths$CSV,"/",fnam,".csv",sep=""),row.names=FALSE,quote = FALSE,sep=",")
+#   
+#   #WRITE TO RDATA
+#   save(simDat,modelTag,modelInfo,attSel,target,file=paste(paths$RData,"/",fnam,".RData",sep=""))
+#   return(fnam)
+# }
 
 #WRITING TO CSV
 writeToCSV<-function(data=NULL,

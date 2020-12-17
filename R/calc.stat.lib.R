@@ -175,6 +175,14 @@ extractor=function(func=NULL,data=NULL,indx=NULL,...){ # returns a number
   return(extractor.out)
 }
 
+extractor.reps=function(func=NULL,data=NULL,indx=NULL,nReps=NULL,...){  # returns a vector
+  temp=rep(0,nReps)
+  for(rep in 1:nReps){
+    dummy=data[,rep]
+    temp[rep]=extractor(func=func,data=dummy,indx=indx,...)
+  }
+  return(temp)
+}
 
 #EXTRACTOR FOR MULTIPLE PERIODS (TEMPORARY FUNCTION here)
 extractor.summaryMean<-function(func=NULL,
@@ -200,6 +208,30 @@ extractor.summarySD<-function(func=NULL,
     sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
   }
   m.series=sd(x=sim.series,na.rm=TRUE)
+  return(m.series)
+}
+
+extractor.summaryMin<-function(func=NULL,
+                              data=NULL,
+                              indx=NULL,
+                              nperiod=NULL,...){
+  sim.series=rep(NA,nperiod)
+  for(p in 1:nperiod){
+    sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
+  }
+  m.series=min(x=sim.series,na.rm=TRUE)
+  return(m.series)
+}
+
+extractor.summaryMax<-function(func=NULL,
+                               data=NULL,
+                               indx=NULL,
+                               nperiod=NULL,...){
+  sim.series=rep(NA,nperiod)
+  for(p in 1:nperiod){
+    sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
+  }
+  m.series=max(x=sim.series,na.rm=TRUE)
   return(m.series)
 }
 
@@ -364,6 +396,23 @@ get.quantile.wet=function(data=NULL,  #vector
   return(temp)
 }
 
+#Culley 2020 function for amplitude
+get.amplitude=function(data=NULL,
+                          datInd=NULL){
+  #First, get monthly totals
+  nperiod=12
+  monthlyTotal=rep(NA,nperiod)
+  for(h in 1:nperiod){
+    monthlyTotal[h]=sum(data[datInd$i.mm[[h]]],na.rm=TRUE)/datInd$nyr
+  }
+  #Fit harmonic to totals
+  harmonicParams<-fit.harmonic.opts(nperiod=nperiod,v.stat=monthlyTotal)
+  
+  amplitude=harmonicParams$amp
+  return(amplitude)
+  
+}
+
 #skewness on wet days
 get.wet.skewness=function(data=NULL,threshold=NULL){
   temp=data[which(data>threshold)]
@@ -479,7 +528,7 @@ plot.attrib.perf.solo=function(rel.diff,                   #relative difference 
                                mtext.line=0.35
                                ){
   #COLOR RAMP
-  traffic.col=c("chartreuse3","gold1","red1")
+  # traffic.col=c("chartreuse3","gold1","red1")
   
   #MAKE VECTOR X
   att.cat=categ.fun(perf.lim,rel.diff)

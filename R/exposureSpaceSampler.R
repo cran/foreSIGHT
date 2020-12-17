@@ -31,14 +31,16 @@ genSampBounds=list(
 expSpaceSampManager<-function(exSpArgs=NULL,
                               attInfo=NULL,
                               attSel=NULL,
-                              file=NULL,
-                              IOmode=NULL,
-                              nSeed=NULL,
-                              seedID=NULL,
-                              arrayID=NULL
+                              file=NULL
+                              # Anjana Commented: decouple seed from exposure space
+                              # IOmode=NULL,
+                              # nSeed=NULL,
+                              # seedID=NULL,
+                              # arrayID=NULL
                               ){
   
   if(is.character(exSpArgs)==TRUE) {
+    print("READING ATTRIBUTE TARGETS FROM FILE")
     targetMat=read.table(file=exSpArgs,sep=",",header=TRUE)  #IF TARGET MAT IN CSV
     attRot=NULL
   }else{
@@ -59,33 +61,38 @@ expSpaceSampManager<-function(exSpArgs=NULL,
                                 targetType=attInfo$targetType,
                                 attSel=attSel,
                                 file)
-      targetMat=spaceInfo$targets
+      targetMat=data.frame(spaceInfo$targets)
       attRot=spaceInfo$attRot
     }
   }
   
-  nTarg=dim(targetMat)[1]
+  # Anjana Commented: decouple seed from exposure space
+  # nTarg=dim(targetMat)[1]
+  # 
+  # #IF IN DEV MODE AND NSEEDS USED
+  # tmpMat=NULL; tmpRot=NULL; seedA=NULL
+  # if((seedID == "fixed") & (!is.null(nSeed))){
+  #   #CREATE SEED LIST
+  #   for(i in 1:nSeed){
+  #     tmpSeed=rep((1234+i),nTarg)
+  #     tmpMat=rbind(tmpMat,targetMat)
+  #     tmpRot=rbind(tmpRot,attRot)
+  #     seedA=c(seedA,tmpSeed)
+  #   }
+  #   targetMat=tmpMat
+  #   attRot=tmpRot
+  #   seedCatalogue=seedA
+  # }else if (seedID=="arrayID"){
+  #   seedCatalogue=rep(arrayID,nTarg)
+  # } else {
+  #   seedCatalogue=rep(seedID,nTarg)
+  # }
+  # 
+  # return(list(targetMat=targetMat,attRot=attRot,seedCatalogue=seedCatalogue))
   
-  #IF IN DEV MODE AND NSEEDS USED
-  tmpMat=NULL; tmpRot=NULL; seedA=NULL
-  if((seedID == "fixed") & (!is.null(nSeed))){
-    #CREATE SEED LIST
-    for(i in 1:nSeed){
-      tmpSeed=rep((1234+i),nTarg)
-      tmpMat=rbind(tmpMat,targetMat)
-      tmpRot=rbind(tmpRot,attRot)
-      seedA=c(seedA,tmpSeed)
-    }
-    targetMat=tmpMat
-    attRot=tmpRot
-    seedCatalogue=seedA
-  }else if (seedID=="arrayID"){
-    seedCatalogue=rep(arrayID,nTarg)
-  } else {
-    seedCatalogue=rep(seedID,nTarg)
-  }
+  return(list(targetMat = targetMat,
+              attRot = attRot))
   
-  return(list(targetMat=targetMat,attRot=attRot,seedCatalogue=seedCatalogue))
 }
 
 expSpaceSampler<-function(type="regGrid",  #LHS to come
@@ -149,8 +156,14 @@ oatSample<-function(samp=30,   #scalar or vector (in order of attributes)
         attRot[k]=attSel[i]
         k=k+1
       }
-    }
-    
+    } #else {
+      # if (length(bounds[[i]]) == 1) {
+      #   targets[k,i]=bounds[[i]][1]
+      # } else {
+      #   targets[k,i]=bounds[[i]][1]+((bounds[[i]][2]-bounds[[i]][1])/2)
+      # }
+      # attRot[k]=attSel[i]
+    # }
   }
   colnames(targets)=attSel
   return(list(targets=targets,attRot=attRot))

@@ -3,12 +3,130 @@
 #################################################
 
 #CONTAINS
+  #CollateDat - wrapper for extract.funcs
+  #CollateDatReps - wrapper for extract.funcs when comparing across replicates
   #stat.func - list of functions
   #funcSel - vector of selected functions
   #monthwise.extract.func()
   #annual.extract.func()
   #seasonal.extract.func()
 
+
+collateDat<-function(TS=NULL,
+                     datInd=NULL,
+                     plotVar=NULL
+){
+  statTag=c("mean","sd","max","min","sum","count")
+  aggTag=c("mon","ann","seas")
+  metricTag=c("dyAll","dyWet","nWet")  
+  
+  outDat=list()
+  
+  #GENERAL STATISTICS
+  k=1
+  for(i in 1:3){
+    for(j in 1:5){
+      runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+      evalFunc=eval(parse(text = statTag[j]))
+      switch(aggTag[i],
+             "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             -999.00 )
+    }  #stat loop
+  } #agg loop
+  
+  #RAINFALL SPECIFIC STATISTICS
+  if(plotVar == "P"){   #only if rainfall
+    k=2 
+    for(i in 1:3){
+      for(j in 1:2){
+        runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+        switch(statTag[j],
+               "mean" = {evalFunc=get.wet.average},
+               "sd"  = {evalFunc=get.wet.sd},
+               {evalFunc=eval(parse(text = statTag[j]))}
+        )
+        switch(aggTag[i],
+               "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               -999.00 )
+      }  #stat loop
+    } #agg loop
+    
+    k=3; j=6
+    for(i in 1:3){
+      runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+      evalFunc=get.nwet
+      switch(aggTag[i],
+             "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             -999.00 )
+    }
+    
+  } #end rain loop
+  return(outDat)
+}
+
+collateDatReps<-function(TS=NULL,
+                         datInd=NULL,
+                         plotVar=NULL
+){
+  statTag=c("mean","sd","max","min","sum","count")
+  aggTag=c("mon","ann","seas")
+  metricTag=c("dyAll","dyWet","nWet")  
+  
+  outDat=list()
+  
+  #GENERAL STATISTICS
+  k=1
+  for(i in 1:3){
+    for(j in 1:5){
+      runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+      evalFunc=eval(parse(text = statTag[j]))
+      switch(aggTag[i],
+             "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],na.rm=TRUE)},
+             -999.00 )
+    }  #stat loop
+  } #agg loop
+  
+  #RAINFALL SPECIFIC STATISTICS
+  if(plotVar == "P"){   #only if rainfall
+    k=2 
+    for(i in 1:3){
+      for(j in 1:2){
+        runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+        switch(statTag[j],
+               "mean" = {evalFunc=get.wet.average},
+               "sd"  = {evalFunc=get.wet.sd},
+               {evalFunc=eval(parse(text = statTag[j]))}
+        )
+        switch(aggTag[i],
+               "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+               -999.00 )
+      }  #stat loop
+    } #agg loop
+    
+    k=3; j=6
+    for(i in 1:3){
+      runTag=paste(aggTag[i],statTag[j],metricTag[k],sep="_")  #will need amending
+      evalFunc=get.nwet
+      switch(aggTag[i],
+             "mon" = {outDat[[runTag]]=monthwise.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             "ann" = {outDat[[runTag]]=annual.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             "seas" = {outDat[[runTag]]=seasonal.extract.func(f=evalFunc,dat=TS,datInd=datInd,stat.func=stat.func,funcSel=funcSel[1:5],threshold=0)},
+             -999.00 )
+    }
+    
+  } #end rain loop
+  return(outDat)
+}
 #--------------------------------------------------------------------------------
 #WRITE WRAPPER FUNC THAT USES EACH OF THESE 
   #direct different tags to different functions...

@@ -16,7 +16,8 @@
 
 #------------------------------------------------
 modCalibrator<-function(obs=NULL,
-                        modelTag=NULL
+                        modelTag=NULL,
+                        window=NULL     #sets moving average window to calibrate daily gamma parameters for "P-har-WGEN"
 ){
   
   #check obs data, modelTag (abbridged version from control)
@@ -46,7 +47,8 @@ modCalibrator<-function(obs=NULL,
                              data=obs[[tempVar]],
                              datInd=datInd[[modelTag[i]]],
                              rain=rain,  
-                             threshold=0)
+                             threshold=0,
+                             window=window)
     parDat[[modelTag[i]]]=parOut
   }
 
@@ -62,7 +64,8 @@ init.calib.master<-function(modelTag=NULL,        #these are set to match the ar
                             data=NULL,            #takes a vector of temperature
                             datInd=NULL,
                             rain=NULL,
-                            threshold=0
+                            threshold=0,
+                            window=NULL
 ){
   
   #SWITCH BASED ON WHAT simVar/modelType
@@ -90,7 +93,8 @@ init.calib.master<-function(modelTag=NULL,        #these are set to match the ar
 init.calib.Pwgen<- function(modelTag=NULL,  #model identifier
                             modelInfo=NULL, #model information based on model identifier
                             data=NULL,      #observed data (data frame) to be used in calibration
-                            datInd=NULL     #date index information
+                            datInd=NULL,     #date index information
+                            window=15 #Culley 27/11/19 added argument for width of window to collect data for daily parameters
 ){
   
   #RECLASSIFY IF "P-har12-wgen-FS"
@@ -98,14 +102,37 @@ init.calib.Pwgen<- function(modelTag=NULL,  #model identifier
   
   #FOR ALL RAINFALL MODELS
   pdd=rep(0,modelInfo$nperiod); alpha=beta=pwd=pdd    #make space to store fitted pars
+  
   for(p in 1:modelInfo$nperiod){
-    #fit pwd and pdd
-    tmp=pdd.pwd.estimator(dat=data,ind=datInd$i.pp[[p]],threshold=0.00)
-    pdd[p]=tmp$pdd; pwd[p]=tmp$pwd
     
-    #fit gamma pars (alpha & beta - using wgen manual labelling convention)
-    tmp=gammaParsMLE2(dat=data[datInd$i.pp[[p]]],wetThresh=0.00)
-    alpha[p]=tmp$shape; beta[p]=tmp$scale
+    #Culley 27/11/19 - Changing modCalibrate for "P-har-wgen"
+    if(modelTag=="P-har-wgen"){ #This will still fit harmonics daily, (i.e. modelInfor$nperiod=365), but the indexing needs to include a window of data either side of the single day
+      
+      i.ww<-rep(NA,1)
+      for(j in 1:length(datInd$i.pp[[p]])){       #extend each index (one point each year) to include window days either side
+        datarun<-seq(datInd$i.pp[[p]][j]-window,datInd$i.pp[[p]][j]+window)
+        if(j==1){datarun<-datarun[datarun>0]} #in first and final years, trim data, as sometimes cannot grab from left or right, respectively
+        if(j==length(datInd$i.pp[[p]])){datarun<-datarun[datarun<=tail(datInd$i.pp[[modelInfo$nperiod]], n=1)]}
+        i.ww<-append(i.ww,datarun)
+      }
+      i.ww<-i.ww[-(1)]
+      
+      tmp=pdd.pwd.estimator(dat=data,ind=i.ww,threshold=0.00)
+      pdd[p]=tmp$pdd; pwd[p]=tmp$pwd
+      
+      #fit gamma pars (alpha & beta - using wgen manual labelling convention)
+      tmp=gammaParsMLE2(dat=data[i.ww],wetThresh=0.00)
+      alpha[p]=tmp$shape; beta[p]=tmp$scale
+      
+    } else {
+    #fit pwd and pdd
+      tmp=pdd.pwd.estimator(dat=data,ind=datInd$i.pp[[p]],threshold=0.00)
+      pdd[p]=tmp$pdd; pwd[p]=tmp$pwd
+      
+      #fit gamma pars (alpha & beta - using wgen manual labelling convention)
+      tmp=gammaParsMLE2(dat=data[datInd$i.pp[[p]]],wetThresh=0.00)
+      alpha[p]=tmp$shape; beta[p]=tmp$scale
+    }
   }
   
   # MODELS WHERE A HARMONIC IS USED

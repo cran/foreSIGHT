@@ -22,16 +22,40 @@
 #                  metric="reliability")
 
 
-tankWrapper<-function(data=NULL,
-                      systemArgs=NULL,
-                      repID=NULL
+#' Wrapper function for a rain water tank system model 
+#'
+#' \code{tankWrapper} is a wrapper function for a rainwater tank system model in foreSIGHT. This function is used in examples in function help files and vignettes.
+#' This function may also be used as an example to create wrapper functions for other system models with scenarios generated using foreSIGHT in \code{R} or other programming languages. 
+#' @param data data.frame; contains observed daily precipitation and temperature to be used to run the rain water tank system model in a data.frame with columns named \emph{year} \emph{month} \emph{day} \emph{P} \emph{Temp}. 
+#'            Note that the first three columns of the data.frame contain the year, month, and day of observation. The columns have to be named as specified.
+#'            Please refer data provided with the package that may be loaded using \code{data(tankDat)} for an example of the expected format of \code{data}.
+#' @param systemArgs a list; contains the input arguments to the rain water tank system model. The valid fields in the list are:
+#' \itemize{
+#' \item {\code{roofArea}} {: numeric; the roof area in sq.m}
+#' \item {\code{nPeople}} {: integer; number of people using water}
+#' \item {\code{tankVol}} {: numeric; volume of the tank in L}
+#' \item {\code{firstFlush}} {: numeric; first flush depth over roof in mm}
+#' \item {\code{write.file}} {: logical; indicates whether output is to be written to file}
+#' \item {\code{fnam}} {: string; name of the output file}
+#' }
+#' @param metrics string vector; the metrics of performance of the system model to be reported. The valid strings may be viewed using the function \code{viewTankMetrics()}
+#' @return The function returns a list containing the calculated values of the performance metrics specified in \code{metrics} after running the system model.
+#' @seealso \code{runSystemModel}, \code{viewTankMetrics}
+#' @examples
+#' # view available performance metrics
+#' viewTankMetrics()
+#' # load example climate data to run the system model
+#' data(tankDat)
+#' systemArgs <- list(roofArea = 205, nPeople = 1, tankVol = 2400, 
+#' firstFlush = 2.0, write.file = FALSE)
+#' tankWrapper(tank_obs, systemArgs, 
+#' metrics = c("average daily deficit (L)", "reliability (fraction)"))
+#' @export
+
+tankWrapper<-function(data,
+                      systemArgs,
+                      metrics
 ) {
-  
-  if(!is.null(repID)){
-    filename=paste0(repID,"_",systemArgs$fnam)
-  }else{
-    filename=systemArgs$fnam
-  }
   
   performance<-tankPerformance(data=data,
                                roofArea=systemArgs$roofArea,   
@@ -39,13 +63,27 @@ tankWrapper<-function(data=NULL,
                                tankVol=systemArgs$tankVol,
                                firstFlush=systemArgs$firstFlush,
                                write.file=systemArgs$write.file,
-                               fnam=filename)[[systemArgs$metric]]
+                               fnam=systemArgs$fnam)
   
-  
+  performanceSubset <- performance[metrics]
+  return(performanceSubset)
   
 }
 
 
+#' Prints the names of the performance metrics of the rain water tank system model 
+#'
+#' \code{viewTankMetrics} prints the names of the performance metrics available in the example rain water tank system model. T
+#' @details This is a helper function that does not take any input arguments. The user may specify one or more of the metric names 
+#' as the \code{metric} argument of \code{tankWrapper} to select the performance metrics from the tank system model.
+#' to select the performance metrics.
+#' @seealso \code{tankWrapper}
+#' @examples
+#' viewTankMetrics()
+#' @export
+viewTankMetrics <- function() {
+  print(tankMetrics)
+}
 
 
 #---------------------------------------------------------
@@ -182,6 +220,14 @@ tank_model<-function(roofArea=50,   #Roof area in m2
   return(list(rainTS=rainTS,roofFlow=roofFlow,inflow=inflow,tankInflow=tankInflow,tankSpill=tankSpill,tankVolSim=tankVolSim,demand=demand,supply=supply))
 }
 
+# placed outside functions so that it can viewed using a helper function
+tankMetrics <- c("volumetric reliability (fraction)",
+                 "reliability (fraction)",
+                 "system efficiency (%)",
+                 "storage efficiency (%)",
+                 "average tank storage (L)",
+                 "average daily deficit (L)")
+  
 
 tankPerformance<-function(data=NULL,
                           roofArea=50,   
@@ -227,7 +273,10 @@ tankPerformance<-function(data=NULL,
   temp=(out$demand-out$supply);temp[which(temp<0)]=0
   avDeficit=sum(temp)/length(temp)
   
-  
-  return(list(volRel=volRel,reliability=reliability,sysEff=sysEff,storEff=storEff,avTankStor=avTankStor,avDeficit=avDeficit))
+  outList <- list(volRel, reliability, sysEff, storEff, avTankStor, avDeficit)
+  names(outList) <- tankMetrics
+  return(outList)
+  # return(list(tankMetrics[1]=volRel,tankMetrics[2]=reliability,tankMetrics[3]=sysEff,
+  #             tankMetrics[4]=storEff,tankMetrics[5]=avTankStor,tankMetrics[6]=avDeficit))
 }
 

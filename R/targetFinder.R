@@ -6,13 +6,13 @@
   #targetFinder() -
 #------------------------------------------------------------------------------------------------ 
 targetFinder<- function(parS,               # vector of pars (will change in optim)
-                        modelTag=NULL,      # tag to link/identify model
                         modelInfo=NULL,
+                        modelEnv=NULL,      # tag to link/identify model
                         attSel=NULL,        # attributes selected (vector of strings)
                         attPrim=NULL,       # primary attribute label
                         attInfo=NULL,     # added info regarding attributes (maybe add in attPrim here)!!!!!!!!!!!!!
-                        datInd=NULL,        # dat ind
-                        initCalibPars=NULL, #vector of pars from initial baseline calibration
+                        datInd=NULL,
+                        randomVector = NULL,
                         target=NULL,        # target locations: desired changes in climate to be simulated, in % relative or abs diff to baseline levels (vector)
                         attObs=NULL,        # observed series attribute values
                         lambda.mult=NULL,   # lambda multiplier for penalty function
@@ -27,12 +27,11 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
 ){
   
   #SIMULATE SELECTED VARIABLE USING CHOSEN STOCHASTIC MODEL
+ 
   sim=switch_simulator(type=modelInfo$simVar,          # what vartype is being simulated
                        parS=parS,
-                       modelTag=modelTag,      
-                       modelInfo=modelInfo,
-                       datInd=datInd,        
-                       initCalibPars=initCalibPars,
+                       modelEnv=modelEnv,      
+                       randomVector = randomVector,
                        wdSeries=wdSeries,      
                        resid_ts=resid_ts,
                        seed=simSeed)
@@ -42,11 +41,9 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
   }else{
     #CALCULATE SELECTED ATTRIBUTE VALUES
     sim.att=attribute.calculator(attSel=attSel,data=sim$sim,datInd=datInd,attribute.funcs=attribute.funcs)
-    
+   
     #RELATING TO BASELINE SERIES 
     simPt=unlist(Map(function(type, val,baseVal) simPt.converter.func(type,val,baseVal), attInfo$targetType, as.vector(sim.att),as.vector(attObs)),use.names = FALSE)
-    
-   # cat(paste(attSel,";",simPt,collapse = ","))
     
     #GET OBJECTIVE FUNCTION VALUE ()
     score=objFuncMC(attSel= attSel,     # vector of selected attributes 
@@ -58,6 +55,8 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
                     lambda=lambda.mult
     )
   }
+ 
+  
   #cat(score)
   return(score)
 }

@@ -28,12 +28,48 @@ modSimulator<-function(datStart=NULL,
   #Manage dates
   dates=makeDates(datStart=datStart,datFinish=datFinish)  #produces dates data.frame (year, month, day)
   datInd=mod.get.date.ind(obs=dates,modelTag=modelTag,modelInfo=modelInfo) #Get datInd for all modelTags
-
+  
+  #Culley 2019 new loop to add ar(1) 
+  set.seed(seed)
+  for(mod in 1:length(modelTag)){
+    if(modelTag[mod]=="P-har-wgen"){
+      
+      # hard coded parameters
+      ar1ParMult=0.001 # correlation between MULTIPLIER of monthly toals (not same as correlation between monthly totals) was 0.97
+      multRange=0.8 # i.e. 0.1 is +/10%, so multiplier 95% limit is 0.9 to 1.1
+      
+      # translated param values needed for AR1
+      multiplierMean=1
+      sdJumpDistr=multRange/1.96*sqrt(1-ar1ParMult^2)
+      # simulation
+      X=arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
+      X=X@.Data+multiplierMean # extract data and add on mean
+      multSim=rep(NA,datInd[[modelTag[mod]]]$ndays)
+      for(iy in 1:datInd[[modelTag[mod]]]$nyr){
+        for(im in 1:12){
+          ind=datInd[[modelTag[mod]]]$i.yy[[iy]][which(datInd[[modelTag[mod]]]$i.yy[[iy]]%in%datInd[[modelTag[mod]]]$i.mm[[im]])]  # to save time this step can be pre-processed into datInd$i.yymm, a list of length 12*nyr
+          multSim[ind]=X[(iy-1)*12+im]
+        }
+      }  
+      multSim<-pmax(multSim,0)
+      modelInfo[[modelTag[mod]]]$ar1=multSim
+    } else {
+      modelInfo[[modelTag[mod]]]$ar1=NULL
+    }
+  }
+  #Culley 2019 new seed generator, but this takes longer
+  # seeds<-list()
+  # ndays<-datInd[[modelTag[1]]]$ndays
+  # set.seed(seed)
+  # seeds$wdstatus<-runif((ndays),0,1)
+  # seeds$rainamount<-runif((ndays),0,1)
+  # seeds$residuals<-rnorm(n=(ndays),mean=0,sd=1)
+  
   #LOOP OVER EACH STOCHASTIC MODEL NOMINATED
   out=list()
-
+  
   for(mod in 1:length(modelTag)){
-    
+    randomVector <- runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
     #IF CONDITIONED ON DRY-WET STATUS, populate wdStatus
     switch(simVar[mod], #
            "P" = {wdStatus=NULL},
@@ -47,18 +83,26 @@ modSimulator<-function(datStart=NULL,
     )
 
     #GRAB PARS RELATED TO modelTag
-    parSel=parS[[modelTag[mod]]]
+    parSel=as.double(parS[[modelTag[mod]]])
+    
+    # write data to model environment
+    #----------------------------------
+    write_model_env(envir = foreSIGHT_modelEnv, 
+                    modelInfo = modelInfo[[modelTag[mod]]], 
+                    modelTag = modelTag[mod], 
+                    datInd = datInd[[modelTag[mod]]] 
+    )
+    #-----------------------------------
 
     out[[simVar[mod]]]=switch_simulator(type=modelInfo[[modelTag[mod]]]$simVar,
                                         parS=parSel,
-                                        modelTag=modelTag[mod],
-                                        modelInfo=modelInfo[[modelTag[mod]]],
-                                        datInd=datInd[[modelTag[mod]]],
+                                        modelEnv = foreSIGHT_modelEnv,
+                                        randomVector = randomVector,
                                         wdSeries=wdStatus,
                                         resid_ts=NULL,
                                         seed=seed)
   }  #end model loop
-
+  
   simDat=makeOutputDataframe(data=out,dates=dates,simVar=simVar,modelTag=modelTag[1])
   
   #WRITE TO FILE

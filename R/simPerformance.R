@@ -1,3 +1,4 @@
+# AD: This file can be removed
 #FUNCTION TO JUST MANAGE THE SIMULATION OF PERFORMANCE
 simPerformance<-function(data=NULL,       #output from scenario generator
                          systemModel=NULL,

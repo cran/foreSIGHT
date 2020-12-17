@@ -16,7 +16,7 @@ objFuncMC<-function(attSel= NULL,     # vector of selected attributes
                     simPt=NULL,
                     target=NULL,
                     penalty.func=penaltyFunc_basic,   #also penaltyFunc_basicSq
-                    lambda=0
+                    lambda=0          # Anjana: Note that this lambda is unused after the fix for lambda.mult exclusive to attPrim - to be removed
 ){
   
   # get.ind<-function(x,y){which(x == y)}     # quick function to find which are primary attributes
@@ -24,14 +24,14 @@ objFuncMC<-function(attSel= NULL,     # vector of selected attributes
   nAtt=length(attSel)  #how many attributes
   
   #switch from list to vector for eucdist  - should just be able to unlist if only those attribs are calculated
-  dist=eucDist(target=target,simPt=simPt)
+  dist=eucDist(target=as.double(target),simPt=simPt)
   
   primInd=which(attInfo$primType==TRUE)
   if(length(primInd)>0){
-    penalty.score=penalty.func(target=target[primInd],simPt=simPt[primInd],lambda=lambda[attInfo$primMult]) 
+    penalty.score=penalty.func(target=as.double(target)[primInd],simPt=simPt[primInd],lambda=attInfo$primMult[primInd]) 
     score=-dist-penalty.score
   }else{
-    score=dist
+    score=-dist
   }
 
   
@@ -62,7 +62,7 @@ objFuncMC<-function(attSel= NULL,     # vector of selected attributes
 eucDist<-function(target=NULL,  #vector of target locations
                   simPt=NULL    #vector of simulated locations
 ){
-  score <- sqrt(sum((target - simPt)^2.0)) 
+  score <- sqrt(sum((target - simPt)^2L)) 
   
 }
 
@@ -79,7 +79,7 @@ penaltyFunc_basicSq<-function(target=NULL,  #scalar target
                             simPt=NULL,   #scalar sim point
                             lambda=NULL   #multiplier/tuning parameter
 ){
-  penalty=sum(lambda*abs(target-simPt)^2.0,na.rm=TRUE)
+  penalty=sum(lambda*abs(target-simPt)^2L,na.rm=TRUE)
 }
 #----------------------------------------------------------
 simPt.converter.func<-function(type=NULL,      # type of simPt

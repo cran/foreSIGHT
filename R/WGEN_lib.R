@@ -7,56 +7,61 @@
   # switch_simulator()
   #----------------------------
   # P_WGEN_master()
-    # P_WGEN_generic() - simulates rainfall using Richardson type model
-        #Pstatus_WGEN_generic()
-        #Pamount_WGEN_generic()
+    # P_WGEN() - simulates rainfall using Richardson type model
+        #Pstatus_WGEN()
+        #Pamount_WGEN()
   #----------------------------
   # TS_WGEN_master()
-    # TS_WGEN_generic() -
+    # TS_WGEN() -
       # calcDaySeries()
-        # calcDayFunc()
+      # calcDayFunc()
       # residualGenerator()
       #****NOT DONE YET Also other correlated series models (via residuals etc) ---
 
 #FUNCTIONS
 #-----------------------------------------------------------------------------------------------------------
+
 switch_simulator<-function(type=NULL,          # what vartype is being simulated
                            parS=NULL,
-                           modelTag=NULL,      
-                           modelInfo=NULL,
-                           datInd=NULL,        
-                           initCalibPars=NULL,
+                           modelEnv = NULL,
+                           randomVector = NULL,
                            wdSeries=NULL,      
                            resid_ts=NULL,
                            seed=NULL
                            ){
-  
-  
+
   switch(type,
-         "P" = { P_WGEN_master(parS=parS,              #RAIN SELECTED
-                               modelTag=modelTag,      
-                               modelInfo=modelInfo,
-                               datInd=datInd,        
-                               initCalibPars=initCalibPars, 
-                               Nw=200,   
-                               #seeds
+         "P" = { 
+           modelTag = modelEnv$P_modelEnv$modelTag
+           switch(strsplit(modelTag, split="-")[[1]][3],
+                        "latent" = { P_latent_master(parS=parS,
+                                                     modelEnv = modelEnv$P_modelEnv,
+                                                     randomVector = randomVector)
+                          },
+                        {
+                          P_WGEN_master(parS=parS,              #RAIN SELECTED
+                               modelEnv = modelEnv$P_modelEnv, 
+                               randomVector = randomVector,
                                N=seed)
+                        } )
                },
          "Temp" = { TS_WGEN_master(parS=parS,         
-                                   modelTag=modelTag,      
-                                   modelInfo=modelInfo,
-                                   datInd=datInd,        
-                                   initCalibPars=initCalibPars, 
+                                   modelTag=modelEnv$Temp_modelEnv$modelTag,      
+                                   modelInfo=modelEnv$Temp_modelEnv$modelInfo,
+                                   datInd=modelEnv$Temp_modelEnv$datInd,  
+                                   randomVector = randomVector,
+                                   initCalibPars=NULL, 
                                    wdSeries=wdSeries,      
                                    resid_ts=resid_ts,
                                    seed=seed)
            
                    },
          "PET" = { TS_WGEN_master(parS=parS,         
-                                  modelTag=modelTag,      
-                                  modelInfo=modelInfo,
-                                  datInd=datInd,        
-                                  initCalibPars=initCalibPars, 
+                                  modelTag=modelEnv$PET_modelEnv$modelTag,      
+                                  modelInfo=modelEnv$PET_modelEnv$modelInfo,
+                                  datInd=modelEnv$PET_modelEnv$datInd,   
+                                  randomVector = randomVector,
+                                  initCalibPars=NULL, 
                                   wdSeries=wdSeries,      
                                   resid_ts=resid_ts,
                                   seed=seed,
@@ -64,261 +69,161 @@ switch_simulator<-function(type=NULL,          # what vartype is being simulated
            
                  },
          "Radn" = { TS_WGEN_master(parS=parS,         
-                                  modelTag=modelTag,      
-                                  modelInfo=modelInfo,
-                                  datInd=datInd,        
-                                  initCalibPars=initCalibPars, 
+                                  modelTag=modelEnv$Radn_modelEnv$modelTag,      
+                                  modelInfo=modelEnv$Radn_modelEnv$modelInfo,
+                                  datInd=modelEnv$Radn_modelEnv$datInd,    
+                                  randomVector = randomVector,
+                                  initCalibPars=NULL, 
                                   wdSeries=wdSeries,      
                                   resid_ts=resid_ts,
                                   seed=seed,
                                   trunc=0)
            
          },
-         
-         # "RH" = { TS_WGEN_master(parS=parS,         
-         #                         modelTag=modelTag,      
-         #                         modelInfo=modelInfo,
-         #                         datInd=datInd,        
-         #                         initCalibPars=initCalibPars, 
-         #                         wdSeries=wdSeries,      
-         #                         resid_ts=resid_ts,
-         #                         seed=seed)
-         #   
-         #         },
+     
+
          -99.00
   )
 }
-#tester
-# mod=2
-# testpar=c(0.64,16.8,7.3,0.4,3.4,1.1,0.17)
-# out=switch_simulator(type=modelInfo[[modelTag[mod]]]$simVar,parS=testpar,
-#                     modelTag=modelTag[mod],modelInfo=modelInfo[[modelTag[mod]]],datInd=datInd[[modelTag[mod]]],
-#                     initCalibPars=NULL,wdSeries=NULL,resid_ts=NULL,seed=1234)
-# plot(out$sim)
 
 P_WGEN_master<- function(parS,               # vector of pars (will change in optim)
-                         modelTag=NULL,      # tag to link/identify model
-                         modelInfo=NULL,
-                         datInd=NULL,        # dat ind
-                         initCalibPars=NULL, # vector of pars from initial baseline calibration
-                         Nw=NULL,            # warmup period in days
+                         modelEnv,
+                         randomVector,
                          N=NULL             # seeds
 ){
-  #Converts supplied pars into required format (e.g. if harmonic applied)
-  par=par.manager(parS=parS,modelInfo=modelInfo,modelTag=modelTag,initCalibPars=initCalibPars)
+  # Converts supplied pars into required format (e.g. if harmonic applied)
+  class(parS) <- "wgen"
+  parTS <- parManager(parS = parS, modelEnv = modelEnv)
   
-  #SIMULATE RAINFALL TIME SERIES
-  sim=P_WGEN_generic(parPwd=par$pwd,
-                     parPdd=par$pdd,
-                     parAlpha=par$alpha,
-                     parBeta=par$beta,
-                     nperiod=modelInfo$nperiod,
-                     i.pp=datInd$i.pp,   #
-                     ndays=length(unlist(datInd$i.pp)), #
-                     Nw=Nw,
-                     N=N)
-  
-  #REMOVE 1 YEAR WARM-UP PERIOD supplied by i.mod
-  # nLast=length(sim$sim); sim$sim=sim$sim[(nLast-datInd$ndays+1):nLast]
+  # Simulate rainfall timeseries
+  sim <- P_WGEN(parTS = parTS,
+                N = N,
+                modelEnv = modelEnv,
+                randomVector = randomVector)
   
   return(sim)  #return simulated rainfall
 }
 
-P_WGEN_generic<-function(parPwd=NULL,    # vector of pars for pwd (length = nperiod)
-                         parPdd=NULL,    # vector of pars for pdd (length = nperiod)
-                         parAlpha=NULL,  # vector of pars for alpha (length = nperiod)
-                         parBeta=NULL,   # vector of pars for beta (length = nperiod)
-                         
-                         nperiod=NULL,   # no. of periods over the year
-                         i.pp=NULL,      # indices for each period (given nperiod) - from get.period.ind() or i.ss etc
-                         ndays=NULL,     # total no. sim days/length(obs)
-                         
-                         Nw=NULL,    #warm-up period
-                         N=NULL     #seed
+P_WGEN<-function(parTS,    
+                 N=NULL,    #seed
+                 modelEnv,
+                 randomVector = NULL
 ){
-  #sim occurence
-  simS=Pstatus_WGEN_generic(parPwd=parPwd,    # vector of pars for pwd (length = nperiod)
-                            parPdd=parPdd,    # vector of pars for pdd (length = nperiod)
-                            nperiod=nperiod,  # no. of periods over the year
-                            i.pp=i.pp,        # indices for each period (given nperiod) - from get.period.ind() or i.ss etc
-                            ndays=ndays,      # total no. sim days/length(obs)    
-                            Nw=Nw,            # warmup period length in days
-                            N=N               # another seed (POSSIBLE REDUNDANT)
+  # unpack WGEN parameters
+  parPwd <- parTS$pwd   # vector of pars (length = ndays)
+  parPdd <- parTS$pdd
+  parAlpha <- parTS$alpha
+  parBeta <- parTS$beta
+  ar1 <- modelEnv$modelInfo$ar1  # Culley 2019 add ar(1) model multipliers
+
+  # sim length  
+  ndays <- length(randomVector)
+  
+  # sim occurrence
+  simS=Pstatus_WGEN(parPwd=parPwd,    # vector of pars for pwd (length = ndays)
+                    parPdd=parPdd,    # vector of pars for pdd (length = ndays)
+                    ndays=ndays,      
+                    randomVector = randomVector 
   )
   
-  #sim amounts
-  simP=Pamount_WGEN_generic(parAlpha=parAlpha,         # vector of pars for alpha (length = nperiod)
-                            parBeta=parBeta,           # vector of pars for beta (length = nperiod)
-                            nperiod=nperiod,           # no. of periods over the year
-                            i.pp=i.pp,                 # indices for each period (given nperiod) - from get.period.ind() or i.ss etc
-                            ndays=ndays,               # total no. sim days/length(obs)   
-                            status_ts=simS$status_ts,  # TS vector of wet/dry statuses-obtained from the output of 'wvar_gen_Pstatus'
-                            N=N                        # random seeds
-                            #seed3=seed3               # random seeds
+  # sim amounts
+  simP=Pamount_WGEN(parAlpha=parAlpha,         # vector of pars for alpha (length = ndays)
+                    parBeta=parBeta,           # vector of pars for beta (length = ndays)
+                    status_ts=simS,            # TS vector of wet/dry statuses-obtained from the output of 'wvar_gen_Pstatus'
+                    N=N,                       # random seed
+                    ndays=ndays                
   )
   
+  
+  # multiply to inflate standard deviation at monthly scale and introduce monthly correlation
+  if(!is.null(ar1)){simP$sim=simP$sim*ar1}
   
   syntP <- list(sim=simP$sim,
                 seed=N)
   return(syntP)
 }
 
-Pstatus_WGEN_generic <- function(parPwd=NULL,    # vector of pars for pwd (length = nperiod)
-                                 parPdd=NULL,    # vector of pars for pdd (length = nperiod)
-                                 nperiod=NULL,   # no. of periods over the year
-                                 i.pp=NULL,      # indices for each period (given nperiod) - from get.period.ind() or i.ss etc
-                                 ndays=NULL,     # total no. sim days/length(obs)    
-                                 Nw,             # warmup period length in days
-                                 N              # another seed (POSSIBLE REDUNDANT)
-                                 # seed1,          # seed to generate first day of each period
-                                 # seed2           # seed to generate occurance series                                        
+Pstatus_WGEN <- function(parPwd,    # vector of pars for pwd (length = nperiod) - The modified cpp code expects vector of length ndays (not nperiod)
+                         parPdd,    # vector of pars for pdd (length = nperiod) - The modified cpp code expects vector of length ndays (not nperiod)
+                         ndays,
+                         randomVector
+                                                              
   ){
   
-  set.seed(N)                                    # seed seed to fix input  
-  drywet_period <- vector(mode="list", nperiod)  # used to save wet/dry status for all days in each period
-  
-  # Markov chain - rain occurance
- # .Random.seed <- seed1                 # set the 1st seed to fix input of start days
-  fday=sample(0:1,(nperiod+Nw),replace=TRUE) # occurance status of first day for each period is sampled randomly (but controlled by seed1)
-  fday=fday[-(1:Nw)]
-  #.Random.seed <- seed2                 # set the second seed
-  RN <- runif((ndays+nperiod*Nw),0,1)   # generate a vector of RN with the length of the entire time-series including warm up for each period
-  # distribute the RN vector to each period
-  for(i in 1:nperiod) {
-    drywet_period[[i]] <- matrix(NA,nrow=(length(i.pp[[i]])+Nw),ncol=1)  # making matrix/vector for each period
-    drywet_period[[i]][1]=fday[i]                                        # loading first day into series
-    } 
-  
-  #FIRST ORDER MARKOV CHAIN FOR RAINFALL OCCURANCE
-  counter=0                                 # initialise counter
-  for (i in 1:nperiod) {                    # Loop over periods
-    counter=counter+1                       # step to first day of period
-    for (j in 2:(length(i.pp[[i]])+Nw)) {   # for number of days in the period + warmup 
-      counter=counter+1                     # step through days
-      if (drywet_period[[i]][j-1] == 0) {
-        if (RN[counter-1] <= parPdd[i]) {   # examine prior day
-          drywet_period[[i]][j] <- 0
-        } else {
-          drywet_period[[i]][j] <- 1
-        }
-      }  else if (drywet_period[[i]][j-1] == 1) {
-        if (RN[counter-1] <= parPwd[i]) {
-          drywet_period[[i]][j] <- 0
-        } else {
-          drywet_period[[i]][j] <- 1
-        }
-      }                                     # end else if
-    }                                       # loop over days in period
-    drywet_period[[i]] <- drywet_period[[i]][-(1:Nw)]  # chop off warmup period 
-  }                                         # end period loop
-  
-  #STICK SERIES BACK TOGETHER AS A CONTINUOUS TIME SERIES USING INDICES
-  drywet_TS=rep(NA,ndays)                      # create blank TS
-  for(i in 1:nperiod){
-    drywet_TS[i.pp[[i]]]=drywet_period[[i]]    # take drywet status for each period and slot into status TS
-  }
-  
-  #LIST TO RETURN
-  syntstatus <- list( #  status_s=drywet_period, # dry/wet status arranged by period
-                     status_ts=drywet_TS,    # dry/wet TS                     
-                     # seed1=seed1,            # record seed for sampling start days
-                     # seed2=seed2,            # record seed to generate occurance series
-                     seed=N                # seed used to start function (POSSIBLY REDUNDANT)
-                     )
-  return(syntstatus)
+  drywet_TS <- Pstatus_WGEN_cpp(parPwd, parPdd, randomVector, ndays)
+  return(drywet_TS)
 }
 
-Pamount_WGEN_generic <- function(parAlpha=NULL,         # vector of pars for alpha (length = nperiod)
-                                 parBeta=NULL,          # vector of pars for beta (length = nperiod)
-                                 nperiod=NULL,          # no. of periods over the year
-                                 i.pp=NULL,             # indices for each period (given nperiod) - from get.period.ind() or i.ss etc
-                                 ndays=NULL,            # total no. sim days/length(obs)   
-                                 status_ts,             # TS vector of wet/dry statuses-obtained from the output of 'wvar_gen_Pstatus'
-                                 N                     # random seeds
-                                 #seed3                  # random seeds
+Pamount_WGEN <- function(parAlpha=NULL,         # vector of pars for alpha (length = nperiod) - alpha has to be of length ndays (as per the code)
+                         parBeta=NULL,          # vector of pars for beta (length = nperiod)
+                         status_ts=NULL,             # TS vector of wet/dry statuses-obtained from the output of 'wvar_gen_Pstatus'
+                         N=NULL,                # random seeds
+                         ndays=NULL
 ){ 
   
-  #GENERATE RAIN ON A PERIOD BASIS
-  set.seed(N)                                         # set seeds
-  Nw=20                                               # warmup
-  nShuffle=120                                        # shuffle period to remove artefacts
-  rain=rep(0,ndays)                                   # make a rainfall TS of 0s
-  for (i in 1:nperiod) {
-   # .Random.seed <- seed3                            # same seed is being used for each wet day generation call
-    wet.days=which(status_ts[i.pp[[i]]]==1)           
-    ind=i.pp[[i]][wet.days]                           # index of where to put the wet days into the TS vector
-    nwet=length(ind)                                  # get no. of wet days to sim 
-    options(warn=-1)
-    allwet<- rgamma((nwet+Nw),
-                    shape=parAlpha[i],
-                    scale=parBeta[i])                 # generate rainfall intensity for all wet days in each season
-    options(warn=0)
-    if(nwet>nShuffle){
-      n_start=Nw+nShuffle                             # include warm-up in shuffle
-      allwet_start=sample(allwet[1:n_start],replace=F,size=n_start) #resample first set to remove weird wave artefact
-      allwet[1:n_start]=allwet_start                  # replace initial entries with shuffled set
-      allwet=allwet[-(1:Nw)]
-    }else{
-      allwet=sample(allwet,replace=F,size=length(allwet)) #resample to get rid of weird wave in 1st yrs  #could split and shuffle 1st only
-      allwet=allwet[-(1:Nw)]
-    }
-
-    rain[ind]=allwet                                  # distribute wet-day amounts for season 's' into rainfall timeseries
-  }                                                   # loop over seasons
-  
-  #this return list should be adjustable
+  set.seed(N)     # seed seed to fix input needed for rgamma  ---  this creates a challenge for passing in a vector of random numbers
+  rain <- vector(mode="numeric", ndays)  #allocate time series
+  wet.days<-which(status_ts==1)         #index wet occurance
+  rain[wet.days] <- rgamma(parAlpha[wet.days],shape=parAlpha[wet.days],scale=parBeta[wet.days])   #sample rain amount
   syntP <- list(sim=rain,  #
-                # seed3=seed3,      # return seeds
                 seed=N)       
   return(syntP)
 }
 
-# TEST CASE - seasonal with all pars the same
-# pdd=0.8152509;pwd=0.3680295;alpha=0.6341648;beta=0.06911646
-# nperiod=4; i.ss=datInd$i.ss ; nperiod=4
-# 
-# sim=P_WGEN_generic(parPwd=rep(pwd,nperiod),
-#                parPdd=rep(pdd,nperiod),
-#                parAlpha=rep(alpha,nperiod),
-#                parBeta=rep(beta,nperiod),
-#                nperiod=nperiod,
-#                i.pp=i.ss,
-#                ndays=datInd$ndays,
-#                Nw=100,
-#                N=122,  
-#                seed1=122,
-#                seed2=122, 
-#                seed3=122                      
-# )
-# windows() 
-# y.range=c(0,60)
-# plot(x=seq(1,datInd$ndays),y=sim$rain_ts,type="l", xlab="days", ylab="Rain (mm)", main="Sim - test",ylim=y.range,xaxs="i")
-#---------------------------------------------------------------------------------------------------------------
+# Latent variable rainfall model
+#-----------------------------------------------------------------------------------------------------
+
+P_latent_master <- function(parS,                 # vector of pars (will change in optim)
+                            modelEnv,
+                            randomVector = NULL
+) {
+  
+  # Converts supplied pars into required format (e.g. if harmonic applied)
+  class(parS) <- "latent"
+  parTS <- parManager(parS = parS, modelEnv = modelEnv)
+  
+  # Simulate rainfall timeseries
+  sim <- P_latent(parTS = parTS,                 # wgen parameters
+                  randomVector = randomVector)   # random vector of length ndays
+  
+  return(sim)  #return simulated rainfall
+  
+}
 
 
-# sim=P_WGEN_generic(parPwd=pwd,
-#                parPdd=pdd,
-#                parAlpha=alpha,
-#                parBeta=beta,
-#                nperiod=nperiod,
-#                i.pp=i.ss,
-#                ndays=datInd$ndays,
-#                Nw=100,
-#                N=122,
-#                seed1=122,
-#                seed2=122,
-#                seed3=122
-# )
-# windows()
-# y.range=c(0,60)
-# plot(x=seq(1,datInd$ndays),y=sim$rain_ts,type="l", xlab="days", ylab="Rain (mm)", main="Sim - test",ylim=y.range,xaxs="i")
-# 
-# max(data);max(sim$rain_ts);sum(sim$rain_ts[i.ss[[2]]]);sum(data[i.ss[[2]]])
+P_latent <- function(parTS,                  # list of parameters
+                     randomVector = NULL
+) {
+  
+  # Unpack WGEN parameters
+  parAlpha <- parTS$alpha
+  parSigma <- parTS$sigma
+  parMu <- parTS$mu
+  parLambda <- parTS$lambda
+  ndays <- length(randomVector)
+  
+  # Calculate latent variable - latentX
+  epsilonT <- qnorm(randomVector, mean = 0, sd = parSigma)
+  latentX <- latentX_calc_cpp(parAlpha, epsilonT, ndays)
+  latentX <- latentX + parMu
+  
+  # Transform latentX to rainfall
+  rain <- rep_len(0, ndays)  
+  latentX_pos_ind <- which(latentX > 0)
+  rain[latentX_pos_ind] <- latentX[latentX_pos_ind] ^ parLambda[latentX_pos_ind]
+  
+  syntP <- list(sim = rain)       
+  return(syntP)
+  
+}
+
+#-----------------------------------------------------------------------------------------------------
 
 TS_WGEN_master<- function(parS=NULL,         # vector of pars (will change in optim)
-                          modelTag=NULL,      # tag to link/identify model
+                          modelTag=NULL,      # tag to link/identify model 
                           modelInfo=NULL,
                           datInd=NULL,        # dat ind
+                          randomVector = NULL,
                           initCalibPars=NULL, # vector of pars from initial baseline calibration
                           wdSeries=NULL,      # rain  series
                           resid_ts=NULL,
@@ -329,20 +234,21 @@ TS_WGEN_master<- function(parS=NULL,         # vector of pars (will change in op
   par=simHarTS.parmanager(parS=parS,modelTag=modelTag,modelInfo=modelInfo,initCalibPars=initCalibPars)
   
   #SIMULATE REQUIRED TIMESERIES
-  sim=TS_WGEN_generic(parCor0=par$cor0,         # correl pars
-                      parCor1=par$cor1, 
-                      parHmean=par$Hmean,       # mean harmonic pars (for $WD or $W & $D)
-                      parHsd=par$Hsd,           # sd harmonic pars (for $WD or $W & $D)
-                      k=modelInfo$ncycle,
-                      nperiod=modelInfo$nperiod,
-                      ndays=datInd$ndays,
-                      nAssocSeries=modelInfo$nAssocSeries,
-                      i.pp=datInd$i.pp,
-                      initCalibPars=initCalibPars,  # initial model calibration pars
-                      WDcondition=modelInfo$WDcondition,   # generate ts conditional on wet-dry series
-                      wdSeries=wdSeries,        # wet-dry series
-                      resid_ts=resid_ts,        # leave capacity to generate or receive residuals
-                      seed=seed                 # seed for residuals generation
+  sim=TS_WGEN(parCor0=par$cor0,         # correl pars
+              parCor1=par$cor1, 
+              parHmean=par$Hmean,       # mean harmonic pars (for $WD or $W & $D)
+              parHsd=par$Hsd,           # sd harmonic pars (for $WD or $W & $D)
+              k=modelInfo$ncycle,
+              nperiod=modelInfo$nperiod,
+              ndays=datInd$ndays,
+              nAssocSeries=modelInfo$nAssocSeries,
+              i.pp=datInd$i.pp,
+              initCalibPars=initCalibPars,  # initial model calibration pars
+              WDcondition=modelInfo$WDcondition,   # generate ts conditional on wet-dry series
+              wdSeries=wdSeries,        # wet-dry series
+              resid_ts=resid_ts,        # leave capacity to generate or receive residuals
+              seed=seed,                 # seed for residuals generation
+              randomVector=randomVector
   )
   #Make data below threshold zero (i.e. no negative radiation)
   if(!is.null(trunc)){
@@ -352,31 +258,22 @@ TS_WGEN_master<- function(parS=NULL,         # vector of pars (will change in op
   
   return(sim)
 }
-#TESTER
-# out=TS_WGEN_master(parS=seq(0.001,0.13,0.01),modelTag=modelTag,modelInfo=modelInfo, 
-#                    datInd=datInd,initCalibPars=NULL, 
-#                    wdSeries=obsP,resid_ts=NULL,seed=1234)
 
-# testpar=c(0.64,16.8,7.3,0.4,3.4,1.1,0.17)
-# out=TS_WGEN_master(parS=testpar,modelTag=modelTag[mod],modelInfo=modelInfo[[modelTag[mod]]],
-#                    datInd=datInd[[modelTag[mod]]],initCalibPars=NULL,
-#                    wdSeries=NULL,resid_ts=NULL,seed=1234)
-#plot(out$sim)
-
-TS_WGEN_generic<-function(parCor0=NULL,         # correl pars
-                          parCor1=NULL,
-                          parHmean=NULL,      # mean harmonic pars
-                          parHsd=NULL,        # sd harmonic pars
-                          k=NULL,
-                          nperiod=NULL,
-                          ndays=NULL,
-                          nAssocSeries=NULL,
-                          i.pp=NULL,
-                          initCalibPars=NULL,  # initial model calibration pars
-                          WDcondition=FALSE,   # generate ts conditional on wet-dry series
-                          wdSeries=NULL,       # wet-dry series
-                          resid_ts=NULL,       # leave capacity to generate or receive residuals
-                          seed=NULL            # seed for residuals generation
+TS_WGEN<-function(parCor0=NULL,         # correl pars
+                  parCor1=NULL,
+                  parHmean=NULL,      # mean harmonic pars
+                  parHsd=NULL,        # sd harmonic pars
+                  k=NULL,
+                  nperiod=NULL,
+                  ndays=NULL,
+                  nAssocSeries=NULL,
+                  i.pp=NULL,
+                  initCalibPars=NULL,  # initial model calibration pars
+                  WDcondition=FALSE,   # generate ts conditional on wet-dry series
+                  wdSeries=NULL,       # wet-dry series
+                  resid_ts=NULL,       # leave capacity to generate or receive residuals
+                  seed=NULL,            # seed for residuals generation
+                  randomVector=NULL
 ){
   
   #generate residual series if none supplied
@@ -385,7 +282,7 @@ TS_WGEN_generic<-function(parCor0=NULL,         # correl pars
                                parCor1=parCor1,
                                ndays=ndays,
                                nAssocSeries=nAssocSeries,
-                               seed=seed
+                               randomVector=randomVector
     )
   }
   
@@ -403,10 +300,7 @@ TS_WGEN_generic<-function(parCor0=NULL,         # correl pars
   out=list(sim=sim,seed=seed)
   return(out)
 }
-#TESTER
-# tmp=TS_WGEN_generic(parCor0=par$cor0, parCor1=par$cor1,parHmean=par$Hmean,parHsd=par$Hsd,k=modelInfo$ncycle,
-#                   nperiod=modelInfo$nperiod,ndays=datInd$ndays, nAssocSeries=0,i.pp=datInd$i.pp,
-#                   initCalibPars=NULL,WDcondition=TRUE,wdSeries=obsP,resid_ts=NULL,seed=1234)
+
 
 #Generate the daily series
 calcDaySeries<-function(Hpar_m=NULL,       #harmonic pars for means of length nperiod 
@@ -448,31 +342,19 @@ calcDayFunc<-function(mean=NULL,
   val=mean+sd*err
 }
 
-#GENERATE RESIDUALS USING SUPLLIED PARAMETERS
+#GENERATE RESIDUALS USING SUPPLIED PARAMETERS
 residualGenerator<-function(parCor0=NULL,
                             parCor1=NULL,
                             ndays=NULL,
                             nAssocSeries=0,
-                            seed=1234,
-                            Nw=200      #Added warm-up period to residuals
+                            randomVector=NULL
 ){
   
   #GENERATE RANDOM NUMBERS FROM A STANDARD NORMAL (MEAN=0, STD=1)
-  set.seed(seed)
-  
-  RN_res<-matrix(rnorm(mean=0,sd=1,n=(ndays+Nw)*(1+nAssocSeries)),nrow=(ndays+Nw),ncol=(1+nAssocSeries))
-  res_gen<-matrix(NA,nrow=(ndays+Nw),ncol=(1+nAssocSeries))
   
   if(nAssocSeries==0){  #if just one series
-    A<- parCor1[1]
-    B<-1
-    res_gen[1,1]=B*RN_res[1,(1+nAssocSeries)]   #load day 1 (no residual error)
-    
-    for(i in 2:(ndays+Nw)){
-      res_gen[i,1]<-A*res_gen[(i-1),(1+nAssocSeries)]+B*RN_res[i,(1+nAssocSeries)]
-    }
-    
-    res_gen=res_gen[(Nw+1):(ndays+Nw),1]
+    RN_res<-qnorm(randomVector, mean=0, sd=1)
+    res_gen <- residualGenerator_cpp(RN_res, parCor1)
     
   }else{
     #IMPLEMENT A/B MATRIX MATHS HERE
@@ -483,5 +365,3 @@ residualGenerator<-function(parCor0=NULL,
   return(res_gen)
 }
 
-#TESTER
-#residualGenerator(parCor0=1,parCor1=0.01,ndays=5113, nAssocSeries=0, seed=1234)

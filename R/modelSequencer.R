@@ -43,9 +43,13 @@ simulateTarget<-function(
     parSugg=NULL
   }
   
+  #set.seed(setSeed)
+  # moved ar1 param calc up to control.R
+  
   attSim=list()          #Make list to store simulated attributes
   targetSim=list()       #Make list to store simulated attributes(target space converted)
   for(mod in 1:nMod){
+    randomVector <- runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
     
      #IF CONDITIONED ON DRY-WET STATUS, populate wdStatus
       switch(simVar[mod], #
@@ -59,19 +63,27 @@ simulateTarget<-function(
                     {wdStatus=NULL}  #default
              )
     
+    # write data to model environment
+    #----------------------------------
+    write_model_env(envir = foreSIGHT_modelEnv, 
+                    modelInfo = modelInfo[[modelTag[mod]]], 
+                    modelTag = modelTag[mod], 
+                    datInd = datInd[[modelTag[mod]]] 
+                    )
+    #-----------------------------------
+    
     if(length(which(modelInfo[[modelTag[mod]]]$minBound==modelInfo[[modelTag[mod]]]$maxBound))==length(modelInfo[[modelTag[mod]]]$minBound)){# 
       progress(p("    Working on variable ",simVar[mod]),file)
       progress(p("    Parameters specified by user, no optimisation ..."),file)
       
+      
       out[[simVar[mod]]]=switch_simulator(type=modelInfo[[modelTag[mod]]]$simVar,
                                           parS=modelInfo[[modelTag[mod]]]$minBound,   #bounds become the pars
-                                          modelTag=modelTag[mod],
-                                          modelInfo=modelInfo[[modelTag[mod]]],
-                                          datInd=datInd[[modelTag[mod]]],
-                                          initCalibPars=NULL,
+                                          modelEnv = foreSIGHT_modelEnv,
+                                          randomVector = randomVector,
                                           wdSeries=wdStatus,
                                           resid_ts=NULL,
-                                          seed=optTest$seed)
+                                          seed=setSeed)
 
     }else{
       progress(p("    Working on variable ",simVar[mod]),file)
@@ -85,13 +97,13 @@ simulateTarget<-function(
       }
       
       optTest=gaWrapper(gaArgs=optimArgs,          
-                        modelTag=modelTag[mod],      
+                        modelEnv = foreSIGHT_modelEnv,      
                         modelInfo=modelInfo[[modelTag[mod]]],
                         attSel=attSel[attInd[[mod]]],
                         attPrim=attPrim,
                         attInfo=attInfo[[modelTag[mod]]],
                         datInd=datInd[[modelTag[mod]]],
-                        initCalibPars=NULL,
+                        randomVector = randomVector,
                         parSuggest=parSel,
                         target=targetLoc[attInd[[mod]]],        
                         attObs=attObs[attInd[[mod]]],        
@@ -106,10 +118,8 @@ simulateTarget<-function(
       
       out[[simVar[mod]]]=switch_simulator(type=modelInfo[[modelTag[mod]]]$simVar,
                                           parS=optTest$par,
-                                          modelTag=modelTag[mod],
-                                          modelInfo=modelInfo[[modelTag[mod]]],
-                                          datInd=datInd[[modelTag[mod]]],
-                                          initCalibPars=NULL,
+                                          modelEnv = foreSIGHT_modelEnv,
+                                          randomVector = randomVector,
                                           wdSeries=wdStatus,
                                           resid_ts=NULL,
                                           seed=optTest$seed)

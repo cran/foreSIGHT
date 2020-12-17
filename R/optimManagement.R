@@ -11,13 +11,13 @@
 
 #-----------------------------------------------
 gaWrapper<-function(gaArgs=NULL,        # can specify your own outside
-                    modelTag=NULL,      # tag to link/identify model
+                    modelEnv=NULL,
                     modelInfo=NULL,     # information related to modelTags
                     attSel=NULL,        # attributes selected (vector of strings)
                     attPrim=NULL,       # primary attribute label
                     attInfo=NULL,       # added info regarding attributes
-                    datInd=NULL,        # dat ind
-                    initCalibPars=NULL, # vector of pars from initial baseline calibration
+                    datInd=NULL,
+                    randomVector = NULL,
                     parSuggest=NULL,    # paramater suggestions
                     target=NULL,        # target locations: desired changes in climate to be simulated, in % relative or abs diff to baseline levels (vector)
                     attObs=NULL,        # observed series attribute values
@@ -46,13 +46,13 @@ gaWrapper<-function(gaArgs=NULL,        # can specify your own outside
               suggestions = parSuggest, 
               monitor = FALSE,             #switchback
               #BELOW RELATED TO TARGETFINDER()
-              modelTag=modelTag,
               modelInfo=modelInfo,
+              modelEnv=modelEnv,
               attSel=attSel,        
               attPrim=attPrim,       
-              attInfo=attInfo,     
-              datInd=datInd,        
-              initCalibPars=initCalibPars, 
+              attInfo=attInfo, 
+              datInd=datInd,
+              randomVector = randomVector,
               target=target,        
               attObs=attObs,        
               lambda.mult=lambda.mult,   

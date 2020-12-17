@@ -52,9 +52,9 @@ banner <- function(x,file) {
 }
 
 progress <- function(x,file) {
-  cat(x,"\n")
+  # cat(x,"\n")
   logfile(x,file)
-  cat("\n")
+  # cat("\n")
 }
 
 warn <- function(x,file) {

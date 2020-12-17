@@ -4,7 +4,6 @@
 
 #CONTAINS
   #get.multi.model.info() - get modle info for multiple modelTags
-  #get.model.info() - based on model tag gets general model information (e.g. nperiods in a year, no. harmonic cycles fitted)
   #par.manager() - based on model tag converts input vector of pars into pdd, pwd, alpha & beta vectors of nperiod length
   #init.calib() - initial calibration function. Uses obs data to fit model to baseline climate.
     #uses model tag to determine what should be fitted (e.g. how many periods, using harmonic, etc.)
@@ -26,296 +25,6 @@
    return(modelInfo)
  }
  
-#Get info for individual models
- get.model.info<-function(modelTag=NULL #string used to specify model for stochastic generation
-  ){
-  
-  modelInfo=list()
-  #SET UP MODEL RELATED PARAMETERS
-  switch(modelTag,
-         "Simple-ann"  = {modelInfo$simVar="All"
-                          modelInfo$simPriority=1 
-                          modelInfo$nperiod=1
-                          },
-         
-         "P-seas-wgen" = {modelInfo$simVar="P"
-                          modelInfo$simPriority=1
-                          modelInfo$nperiod=4       # 4 periods in a year
-                          modelInfo$fixedPars=NA    # No fixed pars
-                          modelInfo$ncycle=NA       # No harmonic fit
-                          modelInfo$npars=modelInfo$nperiod*4 #par vector is of length 16
-                          modelInfo$parNam=c("pdd_1","pdd_2","pdd_3","pdd_4",
-                                             "pwd_1","pwd_2","pwd_3","pwd_4",
-                                             "alpha_1","alpha_2","alpha_3","alpha_4",
-                                             "beta_1","beta_2","beta_3","beta_4")
-                          modelInfo$minBound=c(0.389, 0.334, 0.375, 0.277, 0.078, 0.079, 0.084, 0.036, 
-                                               0.295,	0.303, 0.309,	0.257, 0.043,	0.046, 0.048, 0.034) #Aus 3stdev hard bounds
-                          modelInfo$maxBound=c(0.997, 0.989, 0.994, 0.998, 0.85, 0.714, 0.714, 0.808, 
-                                               0.998, 0.998, 0.998, 0.998, 15.716, 30.08, 27.877, 21.193)
-                          #bounds here?????????????
-                          #npar.optim???? - then split into max, min bounds
-                          },
-         "P-ann-wgen" = {modelInfo$simVar="P"
-                         modelInfo$simPriority=1
-                         modelInfo$nperiod=1
-                         modelInfo$fixedPars=NA
-                         modelInfo$ncycle=NA
-                         modelInfo$npars=modelInfo$nperiod*4       #par vector is of length 4
-                         modelInfo$parNam=c("pdd","pwd","alpha","beta")
-                         modelInfo$minBound=c(0.427, 0.088, 0.313, 0.043) #Aus 3stdev hard bounds
-                         modelInfo$maxBound=c(0.998, 0.824, 0.998, 25.46)
-                        },
-         "P-har12-wgen" = {modelInfo$simVar="P"
-                           modelInfo$simPriority=1
-                           modelInfo$nperiod=12
-                           modelInfo$fixedPars=NA
-                           modelInfo$ncycle=1 
-                           modelInfo$npars=4*(1+modelInfo$ncycle*2)  #par vector is of length 12 
-                           modelInfo$parNam=c("pdd_m","pdd_amp","pdd_ang",
-                                              "pwd_m","pwd_amp","pwd_ang",
-                                              "alpha_m","alpha_amp","alpha_ang",
-                                              "beta_m","beta_amp","beta_ang")
-                           # modelInfo$minBound=c(0.376, 0.006, 3,
-                           #                      0.093, 0.004, 3, 
-                           #                      0.33, 0.002, -1.559, 
-                           #                      0.085, 0.028, -0.223) #Aus 3stdev hard bounds
-                           # modelInfo$maxBound=c(0.986, 0.357, 3.5, 
-                           #                      0.728, 0.319, 3.5, 
-                           #                      0.979, 0.248, 3.13, 
-                           #                      19.723, 13.568, 2.743)
-                           # modelInfo$minBound=c(0.771, 0.055, -0.916,
-                           #                      0.413, 0.052, -0.864,
-                           #                      0.561, 0.071, 1.161,
-                           #                      6.174, 1.853, -0.193) #Aus 3stdev hard bounds
-                           # modelInfo$maxBound=c(0.773, 0.057, -0.918,
-                           #                      0.415, 0.054, -0.866,
-                           #                      0.563, 0.073, 1.163,
-                           #                      6.176, 1.855, -0.195)
-                           modelInfo$minBound=c(0.476, 0.006, 0.730,
-                                                0.093, 0.004, 0.543,
-                                                0.33, 0.002, 4.108,
-                                                0.085, 0.028, 1.348) #Aus 3stdev hard bounds
-                           modelInfo$maxBound=c(0.950, 0.257, 0.733,
-                                                0.728, 0.319, 0.545,
-                                                0.950, 0.200, 4.110,
-                                                15.00, 6.50, 1.350)
-                         },
-         "P-har12-wgen-FS" = {modelInfo$simVar="P"
-                              modelInfo$simPriority=1
-                              modelInfo$nperiod=12
-                              modelInfo$fixedPars="phase.angle"
-                              modelInfo$ncycle=1
-                              modelInfo$npars=4*(1+modelInfo$ncycle*1)  #par vector is of length 8
-                              modelInfo$parNam=c("pdd_m","pdd_amp",
-                                                 "pwd_m","pwd_amp",
-                                                 "alpha_m","alpha_amp",
-                                                 "beta_m","beta_amp")
-                              modelInfo$minBound=c(0.476, 0.006,
-                                                   0.093, 0.004,
-                                                   0.33, 0.002, 
-                                                   0.085, 0.028) #Aus 3stdev hard bounds
-                              modelInfo$maxBound=c(0.950, 0.257,
-                                                   0.728, 0.319,
-                                                   0.950, 0.200,
-                                                   15.00, 6.50)
-                          },
-         "P-har6-wgen" = {modelInfo$simVar="P"
-                           modelInfo$simPriority=1
-                           modelInfo$nperiod=6
-                           modelInfo$fixedPars=NA
-                           modelInfo$ncycle=1 
-                           modelInfo$npars=4*(1+modelInfo$ncycle*2)  #par vector is of length 12 
-                           modelInfo$parNam=c("pdd_m","pdd_amp","pdd_ang",
-                                              "pwd_m","pwd_amp","pwd_ang",
-                                              "alpha_m","alpha_amp","alpha_ang",
-                                              "beta_m","beta_amp","beta_ang")
-                           modelInfo$minBound=c(0.376, 0.006, 3,
-                                                0.093, 0.004, 3, 
-                                                0.33, 0.002, -1.559, 
-                                                0.085, 0.028, -0.223) #Aus 3stdev hard bounds
-                           modelInfo$maxBound=c(0.986, 0.357, 3.5, 
-                                                0.728, 0.319, 3.5, 
-                                                0.979, 0.248, 3.13, 
-                                                19.723, 13.568, 2.743)
-                        },
-         
-         "P-har26-wgen" = {modelInfo$simVar="P"
-                           modelInfo$simPriority=1
-                           modelInfo$nperiod=26
-                           modelInfo$fixedPars=NA
-                           modelInfo$ncycle=1 
-                           modelInfo$npars=4*(1+modelInfo$ncycle*2)  #par vector is of length 12 
-                           modelInfo$parNam=c("pdd_m","pdd_amp","pdd_ang",
-                                              "pwd_m","pwd_amp","pwd_ang",
-                                              "alpha_m","alpha_amp","alpha_ang",
-                                              "beta_m","beta_amp","beta_ang")
-                           modelInfo$minBound=c(0.376, 0.006, 0.580, 
-                                                0.093, 0.004, 0.461, 
-                                                0.33, 0.002, 3.940, 
-                                                0.085, 0.028, 1.200) #Aus 3stdev hard bounds
-                           modelInfo$maxBound=c(0.986, 0.357, 0.584, 
-                                                0.728, 0.319, 0.464, 
-                                                0.979, 0.248, 3.942, 
-                                                19.723, 13.568, 1.202)
-                        },
-
-
-         "P-2har26-wgen" = {modelInfo$simVar="P"
-                            modelInfo$simPriority=1
-                            modelInfo$nperiod=26
-                            modelInfo$fixedPars=NA
-                            modelInfo$ncycle=2 
-                            modelInfo$npars=4*(1+modelInfo$ncycle*2)  #par vector is of length 20
-                            modelInfo$parNam=c("pdd_m","pdd_amp1","pdd_amp2","pdd_ang1","pdd_ang2",
-                                               "pwd_m","pwd_amp1","pwd_amp2","pwd_ang1","pwd_ang2",
-                                               "alpha_m","alpha_amp1","alpha_amp2","alpha_ang1","alpha_ang2",
-                                               "beta_m","beta_amp1","beta_amp2","beta_ang1","beta_ang2")
-                            modelInfo$minBound=c(0.376, 0.006, 0.002, -1.462, -1.184, 0.093, 0.004, 
-                                                 0.001, -1.55, -1.338, 0.33, 0.002, 0.001, -1.559, 
-                                                 -1.539, 0.085, 0.028, 0.011, -0.223, -1.424) #Aus 3stdev hard bounds
-                            modelInfo$maxBound=c(0.986, 0.357, 0.087, 2.931, 2.941, 0.728, 0.319, 
-                                                 0.093, 3.118, 3.015, 0.979, 0.248, 0.129, 3.13, 
-                                                 3.131, 19.723, 13.568, 6.366, 2.743, 2.948)
-         },
-         "Temp-har26-wgen-wd" = {modelInfo$simVar="Temp"
-                                 modelInfo$simPriority=2
-                                 modelInfo$nAssocSeries=0
-                                 modelInfo$WDcondition=TRUE  #conditioned on wet/dry status
-                                 modelInfo$wdCycle="All"
-                                 modelInfo$nperiod=26
-                                 modelInfo$fixedPars=NA
-                                 modelInfo$ncycle=1 
-                                 modelInfo$npars=4*(1+modelInfo$ncycle*2)+1             #par vector is of length  13
-                                 modelInfo$parNam=c("cor0",
-                                                    "W-mCycle-m","W-mCycle-amp","W-mCycle-ang",
-                                                    "W-sCycle-m","W-sCycle-amp","W-sCycle-ang",
-                                                    "D-mCycle-m","D-mCycle-amp","D-mCycle-ang",
-                                                    "D-sCycle-m","D-sCycle-amp","D-sCycle-ang")
-                                 
-                                 modelInfo$minBound=c(0.45,7.0,1.0,-0.05,0.9,0.1,-1.6,7.0,1.0,-0.05,0.9,0.1,-1.6) #Placeholder bounds
-                                 modelInfo$maxBound=c(0.90,28.0,9.0,0.81,4.9,1.4,3.15,28.0,9.0,0.81,4.9,1.4,3.15)
-         },
-         "Temp-har26-wgen" = {modelInfo$simVar="Temp"
-                              modelInfo$simPriority=2
-                              modelInfo$nAssocSeries=0
-                              modelInfo$WDcondition=FALSE  #conditioned on wet/dry status
-                              modelInfo$wdCycle=FALSE
-                              modelInfo$nperiod=26
-                              modelInfo$fixedPars=NA
-                              modelInfo$ncycle=1 
-                              modelInfo$npars=2*(1+modelInfo$ncycle*2)+1             #par vector is of length  7
-                              modelInfo$parNam=c("cor0",
-                                                 "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
-                                                 "WD-sCycle-m","WD-sCycle-amp","WD-sCycle-ang")
-                              modelInfo$minBound=c(0.45,7.0,1.0,-0.05,0.9,0.1,-1.6) #Placeholder bounds
-                              modelInfo$maxBound=c(0.9,28.0,9.0,0.81,4.9,1.4,3.15)
-                              },
-         "Temp-har26-wgen-wdsd" = {modelInfo$simVar="Temp"
-                                   modelInfo$simPriority=2
-                                   modelInfo$nAssocSeries=0
-                                   modelInfo$WDcondition=TRUE  #conditioned on wet/dry status
-                                   modelInfo$wdCycle="sCycle"
-                                   modelInfo$nperiod=26
-                                   modelInfo$fixedPars=NA
-                                   modelInfo$ncycle=1 
-                                   modelInfo$npars=3*(1+modelInfo$ncycle*2)+1             #par vector is of length  10
-                                   modelInfo$parNam=c("cor0",
-                                                      "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
-                                                      "W-sCycle-m","W-sCycle-amp","W-sCycle-ang",
-                                                      "D-sCycle-m","D-sCycle-amp","D-sCycle-ang")
-                                   modelInfo$minBound=c(0.45,7.0,1.0,-0.05,0.9,0.1,-1.6,0.9,0.1,-1.6) #aus bounds
-                                   modelInfo$maxBound=c(0.90,28.0,9.0,0.81,4.9,1.4,3.15,4.9,1.4,3.15)
-                                    },
-         "PET-har12-wgen" = {modelInfo$simVar="PET"
-                             modelInfo$simPriority=2
-                             modelInfo$nAssocSeries=0
-                             modelInfo$WDcondition=FALSE  #conditioned on wet/dry status
-                             modelInfo$wdCycle=FALSE
-                             modelInfo$nperiod=12
-                             modelInfo$fixedPars=NA
-                             modelInfo$ncycle=1 
-                             modelInfo$npars=2*(1+modelInfo$ncycle*2)+1             #par vector is of length  7
-                             modelInfo$parNam=c("cor0",
-                                                "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
-                                                "WD-sCycle-m","WD-sCycle-amp","WD-sCycle-ang")
-                             modelInfo$minBound=c(0.0, 
-                                                  0,0.01,0.2,
-                                                  0.01,0.01,0.2)  #NB: Placeholder bounds
-                             modelInfo$maxBound=c(0.9,
-                                                  6,5,0.3,
-                                                  3,3,0.3)
-                            },
-         "PET-har26-wgen" = {modelInfo$simVar="PET"
-                              modelInfo$simPriority=2
-                              modelInfo$nAssocSeries=0
-                              modelInfo$WDcondition=FALSE  #conditioned on wet/dry status
-                              modelInfo$wdCycle=FALSE
-                              modelInfo$nperiod=26
-                              modelInfo$fixedPars=NA
-                              modelInfo$ncycle=1 
-                              modelInfo$npars=2*(1+modelInfo$ncycle*2)+1             #par vector is of length  7
-                              modelInfo$parNam=c("cor0",
-                                                "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
-                                                "WD-sCycle-m","WD-sCycle-amp","WD-sCycle-ang")
-                              modelInfo$minBound=c(0.0  ,0  ,0.01 ,0.2 ,1 ,0.4 ,0.2)  #NB: Placeholder bounds
-                              modelInfo$maxBound=c(0.9  ,6  ,5    ,0.3 ,3    ,3    ,0.3)
-                               },
-         "PET-har26-wgen-wd" = {modelInfo$simVar="PET"
-                                 modelInfo$simPriority=2
-                                 modelInfo$nAssocSeries=0
-                                 modelInfo$WDcondition=TRUE  #conditioned on wet/dry status
-                                 modelInfo$wdCycle="All"
-                                 modelInfo$nperiod=26
-                                 modelInfo$fixedPars=NA
-                                 modelInfo$ncycle=1 
-                                 modelInfo$npars=4*(1+modelInfo$ncycle*2)+1             #par vector is of length  13
-                                 modelInfo$parNam=c("cor0",
-                                                    "W-mCycle-m","W-mCycle-amp","W-mCycle-ang",
-                                                    "W-sCycle-m","W-sCycle-amp","W-sCycle-ang",
-                                                    "D-mCycle-m","D-mCycle-amp","D-mCycle-ang",
-                                                    "D-sCycle-m","D-sCycle-amp","D-sCycle-ang")
-                                 
-                                 modelInfo$minBound=c(0.001,
-                                                      0.01,0.01,0.95,
-                                                      0.01,0.01,0.9,
-                                                      0.01,0.01,0.95,
-                                                      0.01,0.01,0.9) #Placeholder bounds
-                                 modelInfo$maxBound=c(0.95,
-                                                      30.0,10.0,1.1,
-                                                      10.0,10.0,1.05,
-                                                      30.0,9.0,1.1,
-                                                      10.0,10.0,1.05)
-                              },
-         "Radn-har26-wgen" = {modelInfo$simVar="Radn"
-                              modelInfo$simPriority=3
-                              modelInfo$nAssocSeries=0
-                              modelInfo$WDcondition=FALSE  #conditioned on wet/dry status
-                              modelInfo$wdCycle=FALSE
-                              modelInfo$nperiod=26
-                              modelInfo$fixedPars=NA
-                              modelInfo$ncycle=1 
-                              modelInfo$npars=2*(1+modelInfo$ncycle*2)+1             #par vector is of length  7
-                              modelInfo$parNam=c("cor0",
-                                                "WD-mCycle-m","WD-mCycle-amp","WD-mCycle-ang",
-                                                "WD-sCycle-m","WD-sCycle-amp","WD-sCycle-ang")
-                              modelInfo$minBound=c(0.45,7.0,1.0,-0.05,0.9,0.1,-1.6) #Placeholder bounds
-                              modelInfo$maxBound=c(0.9,29.0,10.0,0.81,4.9,1.4,3.15)
-         },
-         #--- MORE VERSIONS COMING ---
-
-         # "P-2har26-wgen-FS" = {modelInfo$simVar="P"
-         # modelInfo$nperiod=26
-         #                       modelInfo$fixedPars="phase.angle"
-         #                       modelInfo$ncycle=2
-         #                       modelInfo$npars=4*(1+modelInfo$ncycle*1)  #par vector is of length 12
-         # },
-         # versions where occurence w/d is kept the same as current
-         
-         -999
-         )
-  return(modelInfo)
-  
-}
 
 #UPDATE MODEL INFO IF FIXED PARAMETERS
 update.model.info<-function(modelTag=NULL, modelInfo=NULL,fixedPars=NULL,minUserBound=NULL,maxUserBound=NULL,file=NULL){
@@ -363,6 +72,42 @@ update.model.info<-function(modelTag=NULL, modelInfo=NULL,fixedPars=NULL,minUser
   #Otherwise do nothing
   return(modelInfo)
 }
+
+# Anjana : function for ar1 parameter calculation (moved up from modelSequencer.R)
+#-----------------------------------------------------------------------
+
+#Culley 2019 new loop to add ar(1)
+add_ar1Param <- function(modelTag, modelInfo, datInd) {
+
+  for(mod in 1:length(modelTag)){
+    if(modelTag[mod]=="P-har-wgen"){
+      # hard coded parameters
+      ar1ParMult=0.001 # correlation between MULTIPLIER of monthly toals (not same as correlation between monthly totals) was 0.97
+      multRange=0.8 # i.e. 0.1 is +/10%, so multiplier 95% limit is 0.9 to 1.1
+      # translated param values needed for AR1
+      multiplierMean=1
+      sdJumpDistr=multRange/1.96*sqrt(1-ar1ParMult^2)
+      # simulation
+      X=arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
+      X=X@.Data+multiplierMean # extract data and add on mean
+      multSim=rep(NA,datInd[[modelTag[mod]]]$ndays)
+      for(iy in 1:datInd[[modelTag[mod]]]$nyr){
+        for(im in 1:12){
+          ind=datInd[[modelTag[mod]]]$i.yy[[iy]][which(datInd[[modelTag[mod]]]$i.yy[[iy]]%in%datInd[[modelTag[mod]]]$i.mm[[im]])]  # to save time this step can be pre-processed into datInd$i.yymm, a list of length 12*nyr
+          multSim[ind]=X[(iy-1)*12+im]
+        }
+      }
+      multSim<-pmax(multSim,0)
+      modelInfo[[modelTag[mod]]]$ar1=multSim
+    } else {
+      if (modelTag[mod]!="Simple-ann") {
+        modelInfo[[modelTag[mod]]]$ar1=NULL
+      }
+    }
+  }
+  return(modelInfo)
+}
+#------------------------------------------------------------------------
 # #EXAMPLE 1
 # modelTag="P-har12-wgen-FS"
 # modelInfo=get.model.info(modelTag)
@@ -384,78 +129,84 @@ return.simVar<-function(modelInfo=NULL){
   return(modelInfo$simVar)
 }
 
+
+parManager <- function(parS, modelEnv) {
+  UseMethod("parManager", parS)
+}
+
 #PARAMETER MANAGER FOR WGEN STYLE RAIN SIMULATOR
   #NPERIOD, I.PP , DATIND INFO
   #IF NEEDED (E.G. HARMONIC) 
-par.manager<-function(parS=NULL,         # pars to split
-                      modelInfo=NULL,    # assoicated model info
-                      modelTag=NULL,     # model label
-                      initCalibPars=NULL # par series from intial calib to obs
+parManager.wgen <- function(parS = NULL,        # pars to split
+                            modelEnv = NULL    # modelEnv that stores modelInfo, modelTag & datInd
   ){
   
+  modelInfo <- modelEnv$modelInfo
+  datInd <- modelEnv$datInd
+  
+  if (length(parS) != modelInfo$npars) {
+    stop("Error: The number of parameters passed to the par manager does not match the number of parameters of the selected model")
+  }
   
   #IF NO HARMONIC OR PARAMETER FIXING APPLIED IN MODEL VERSION
   if(is.na(modelInfo$ncycle) & is.na(modelInfo$fixedPars)){
+    
+    if(modelInfo$nperiod == 1) {
+      #stop("Error: nperiod is not equal to 1, rep to create parameters of length `ndays` in the par manager will not work")
     #check length(pars == modelInfo$npars)   # if it fails put in a warning
-    pdd=parS[1:modelInfo$nperiod]                                 # extract first set of pars (pars evenly split across vector)
-    pwd=parS[(modelInfo$nperiod+1):(2*modelInfo$nperiod)]
-    alpha=parS[(2*modelInfo$nperiod+1):(3*modelInfo$nperiod)]
-    beta=parS[(3*modelInfo$nperiod+1):(4*modelInfo$nperiod)]
+    pdd=rep_len(parS[1:modelInfo$nperiod], datInd$ndays)                                 # extract first set of pars (pars evenly split across vector)
+    pwd=rep_len(parS[(modelInfo$nperiod+1):(2*modelInfo$nperiod)], datInd$ndays)
+    alpha=rep_len(parS[(2*modelInfo$nperiod+1):(3*modelInfo$nperiod)], datInd$ndays)
+    beta=rep_len(parS[(3*modelInfo$nperiod+1):(4*modelInfo$nperiod)], datInd$ndays)
+    } else if(modelInfo$nperiod == 4) {
+      if(datInd$ndays != (length(unlist(datInd[["i.ss"]])))) stop("seasonal parameter assignment doesn't work properly.")
+      pdd <- assignSeasPars(parS[1], parS[2], parS[3], parS[4], datInd[["i.ss"]])
+      pwd <- assignSeasPars(parS[5], parS[6], parS[7], parS[8], datInd[["i.ss"]])
+      alpha <- assignSeasPars(parS[9], parS[10], parS[11], parS[12], datInd[["i.ss"]])
+      beta <- assignSeasPars(parS[13], parS[14], parS[15], parS[16], datInd[["i.ss"]])
+    }
   }
-  
   
   #if harmonics are required and no pars fixed - fit them
    if(!is.na(modelInfo$ncycle) & is.na(modelInfo$fixedPars)){
-     npos=1
-     st.parset=(npos-1)*(2*modelInfo$ncycle+1)+1       # start position in vector for this parameter set
-     pdd=harmonicFunc(x=seq(1,modelInfo$nperiod),
-                  mean=parS[st.parset],
-                  amp=parS[(st.parset+1):(st.parset+modelInfo$ncycle)],
-                  phase.ang=parS[(st.parset+modelInfo$ncycle+1):((st.parset+2*modelInfo$ncycle))],
-                  k=modelInfo$ncycle,
-                  nperiod=modelInfo$nperiod)
      
-     npos=2
-     st.parset=(npos-1)*(1+2*modelInfo$ncycle)+1       # start position in vector for this parameter set
-     pwd=harmonicFunc(x=seq(1,modelInfo$nperiod),
-                      mean=parS[st.parset],
-                      amp=parS[(st.parset+1):(st.parset+modelInfo$ncycle)],
-                      phase.ang=parS[(st.parset+modelInfo$ncycle+1):((st.parset+2*modelInfo$ncycle))],
-                      k=modelInfo$ncycle,
-                      nperiod=modelInfo$nperiod)
      
-     npos=3
-     st.parset=(npos-1)*(1+2*modelInfo$ncycle)+1       # start position in vector for this parameter set
-     alpha=harmonicFunc(x=seq(1,modelInfo$nperiod),
-                      mean=parS[st.parset],
-                      amp=parS[(st.parset+1):(st.parset+modelInfo$ncycle)],
-                      phase.ang=parS[(st.parset+modelInfo$ncycle+1):((st.parset+2*modelInfo$ncycle))],
-                      k=modelInfo$ncycle,
-                      nperiod=modelInfo$nperiod)
+     pdd<-vector(mode="numeric",datInd$ndays) #Initialise vectors
+     pwd<-vector(mode="numeric",datInd$ndays)
+     alpha<-vector(mode="numeric",datInd$ndays)
+     beta<-vector(mode="numeric",datInd$ndays)
+      
+     #Culley 2019 the below code includes leap years
+     # for (i in 1:datInd$nyr){                 #There are probably more speedups here, but this is my leap year solution. It moves through each year, and either takes 365 or 366 points from a harmonic.
+     #   pdd[datInd$i.yy[[i]]]<-harmonicFunc(x=seq(1:length(datInd$i.yy[[i]])),mean=parS[1],amp=parS[2],phase.ang = parS[3],k=1,nperiod=length(datInd$i.yy[[i]]))
+     #   pwd[datInd$i.yy[[i]]]<-harmonicFunc(x=seq(1:length(datInd$i.yy[[i]])),mean=parS[4],amp=parS[5],phase.ang = parS[6],k=1,nperiod=length(datInd$i.yy[[i]]))
+     #   alpha[datInd$i.yy[[i]]]<-harmonicFunc(x=seq(1:length(datInd$i.yy[[i]])),mean=parS[7],amp=parS[8],phase.ang = parS[9],k=1,nperiod=length(datInd$i.yy[[i]]))
+     #   beta[datInd$i.yy[[i]]]<-harmonicFunc(x=seq(1:length(datInd$i.yy[[i]])),mean=parS[10],amp=parS[11],phase.ang = parS[12],k=1,nperiod=length(datInd$i.yy[[i]]))
+     # }
      
-     npos=4
-     st.parset=(npos-1)*(1+2*modelInfo$ncycle)+1       # start position in vector for this parameter set
-     beta=harmonicFunc(x=seq(1,modelInfo$nperiod),
-                      mean=parS[st.parset],
-                      amp=parS[(st.parset+1):(st.parset+modelInfo$ncycle)],
-                      phase.ang=parS[(st.parset+modelInfo$ncycle+1):((st.parset+2*modelInfo$ncycle))],
-                      k=modelInfo$ncycle,
-                      nperiod=modelInfo$nperiod)
+     #Culley 2019 these parameter generators ignore leap years, so for long time series will become out of sync.
+       pdd<-harmonicFunc(x=seq(1:datInd$ndays),mean=parS[1],amp=parS[2],phase.ang = parS[3],k=1,nperiod=365)
+       pwd<-harmonicFunc(x=seq(1:datInd$ndays),mean=parS[4],amp=parS[5],phase.ang = parS[6],k=1,nperiod=365)
+       alpha<-harmonicFunc(x=seq(1:datInd$ndays),mean=parS[7],amp=parS[8],phase.ang = parS[9],k=1,nperiod=365)
+       beta<-harmonicFunc(x=seq(1:datInd$ndays),mean=parS[10],amp=parS[11],phase.ang = parS[12],k=1,nperiod=365)
+     
+
+     #Culley 2019 setting 0-1 limits for pdd,pwd.
+     pdd<-pmin(pdd,1)
+     pdd<-pmax(pdd,0)
+
+     pwd<-pmin(pwd,1)
+     pwd<-pmax(pwd,0)
+     
+     #Culley 2019 non negative limits for alpha,beta
+     #alpha<-pmax(alpha,0)
+     #beta<-pmax(beta,0)
+     alpha<-pmax(alpha,.Machine$double.xmin) # Modified by SW 1/1/2020 as gamma distribution can't handle zero values for shape and scale
+     beta<-pmax(beta,.Machine$double.xmin)       
     
    }
   
 
-  #CONDITIONS WHERE SOME PARS ARE FIXED
-    #FIXED SEASONALITY OR OCCURANCE OR ...
-    #INITICALIBPARS
-    #need sytem for each type of fixing
-    # if modelInfo$fixedPars="phase.angle"...
-    #if(!is.na(modelInfo$ncycle) & (modelInfo$fixedPars == "phase.angle")){}
-    # if modelInfo$fixedPars=
-    
-  
-  
-  
    #out is to - CALCULATE PAR VECTORS (PDD,PWD,ALPA,BETA)
   out=list(pdd=pdd,
            pwd=pwd,
@@ -463,6 +214,78 @@ par.manager<-function(parS=NULL,         # pars to split
            beta=beta)
    return(out)
 }
+
+
+
+assignSeasPars <- function(par1, par2, par3, par4, seasInd) {
+  ndays <- length(unlist(seasInd))
+  parAllDays <- rep_len(NA, length.out = ndays)
+  parAllDays[seasInd[[1]]] <- par1
+  parAllDays[seasInd[[2]]] <- par2
+  parAllDays[seasInd[[3]]] <- par3
+  parAllDays[seasInd[[4]]] <- par4
+  if (any(is.na(parAllDays))) stop("NA values in assigned seasonal parameters.")
+  return(parAllDays)
+}
+
+
+# Parameter manager for latent model WGEN
+#-------------------------------------------------------------------------------------------------------------
+
+parManager.latent <- function(parS = NULL,          # pars to split
+                              modelEnv = NULL       # modelEnv that stores modelInfo, modelTag & datInd
+) {
+  
+  modelInfo <- modelEnv$modelInfo
+  datInd <- modelEnv$datInd
+  
+  if (length(parS) != modelInfo$npars) {
+    stop("Error: The number of parameters passed to the par manager does not match the number of parameters of the selected model")
+  }
+  
+  # IF NO HARMONIC OR PARAMETER FIXING APPLIED IN MODEL VERSION
+  if(is.na(modelInfo$ncycle) & is.na(modelInfo$fixedPars)){
+    
+    if(modelInfo$nperiod != 1) {
+      stop("Error: nperiod is not equal to 1, rep to create parameters of length `ndays` in the par manager will not work")
+    }
+    
+    alpha <- rep_len(parS[1:modelInfo$nperiod], datInd$ndays)                                 # extract first set of pars (pars evenly split across vector)
+    sigma <- rep_len(parS[(modelInfo$nperiod+1):(2*modelInfo$nperiod)], datInd$ndays)
+    mu <- rep_len(parS[(2*modelInfo$nperiod+1):(3*modelInfo$nperiod)], datInd$ndays)
+    lambda <- rep_len(parS[(3*modelInfo$nperiod+1):(4*modelInfo$nperiod)], datInd$ndays)
+  }
+  
+  # if harmonics are required and no pars fixed - fit them
+  if(!is.na(modelInfo$ncycle) & is.na(modelInfo$fixedPars)){
+    
+    alpha <- vector(mode = "numeric", datInd$ndays) # Initialise vectors - required? check if it makes a difference for computational time
+    sigma <- vector(mode = "numeric", datInd$ndays)
+    mu <- vector(mode = "numeric", datInd$ndays)
+    lambda <- vector(mode = "numeric", datInd$ndays)
+    
+    # Culley 2019 these parameter generators ignore leap years, so for long time series will become out of sync.
+    alpha <- harmonicFunc(x = seq(1:datInd$ndays), mean=parS[1], amp=parS[2], phase.ang = parS[3], k = 1, nperiod = 365)
+    sigma <- harmonicFunc(x = seq(1:datInd$ndays), mean=parS[4], amp=parS[5], phase.ang = parS[6], k = 1, nperiod = 365)
+    mu <- harmonicFunc(x = seq(1:datInd$ndays), mean=parS[7], amp=parS[8], phase.ang = parS[9], k = 1, nperiod = 365)
+    lambda <- harmonicFunc(x = seq(1:datInd$ndays), mean=parS[10], amp=parS[11], phase.ang = parS[12], k = 1, nperiod = 365)
+    
+    # set limits on parameters after get point values from the harmonic function
+    alpha <- pmax(alpha, -1)
+    alpha <- pmin(alpha, 1)
+    sigma <- pmax(sigma, 0)
+    
+  }
+  
+  out=list(alpha = alpha,
+           sigma = sigma,
+           mu = mu,
+           lambda = lambda)
+  return(out)
+}
+
+#-------------------------------------------------------------------------------------------------------------
+
 
 # init.calib<- function(modelTag=NULL,  #model identifier
 #                       modelInfo=NULL, #model information based on model identifier

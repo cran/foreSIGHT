@@ -126,14 +126,17 @@ harmonicFunc<- function(x,           # series of times
                         k,            # no. of harmonics (max 3)
                         nperiod=26   #No. of periods 
                         ) {
+  # First line of switch modified by SW 31/12/2019 for numerical speedup. To be extended to additional harmonics, and also better handling of leap years.
   switch(k,
-         y <- mean+amp[1]*cos(2*pi*x/nperiod-phase.ang[1]),
+         y <- rep(mean+amp[1]*cos(2*pi*x[1:nperiod]/nperiod-phase.ang[1]), length.out=length(x)),
          y <- mean+amp[1]*cos(2*pi*x/nperiod-phase.ang[1])+amp[2]*cos(2*pi*x/nperiod-phase.ang[2]),
          y <- mean+amp[1]*cos(2*pi*x/nperiod-phase.ang[1])+amp[2]*cos(2*pi*x/nperiod-phase.ang[2])+amp[3]*cos(2*pi*x/nperiod-phase.ang[3]),
          -999           # default
          )
   return(y)
 }
+
+
 
 #EXAMPLE 
 # pp=out$wet$cv

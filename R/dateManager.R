@@ -21,6 +21,9 @@ dateExtender<-function(obs=NULL,
                        simLengthNyrs=NULL,
                        file=NULL,
                        modelTag=NULL
+                       # Anjana: Commented - removed multiple ways of extending dates for simplicity
+                       #datStart=NULL,
+                       #datFinish=NULL
                        ){
   #EXTEND DATES IF NEEDED
   if(!is.null(simLengthNyrs)){
@@ -31,7 +34,15 @@ dateExtender<-function(obs=NULL,
       dateExtnd=obs[,c("year","month","day")]                                              # make the same as observed
       progress("Length of time series cannot be increased using simple scaling",file)
     }
-  }else{
+  # }else if(!is.null(datStart)){
+  #   if(modelTag[[1]] != "Simple-ann"){
+  #     dateExtnd=makeDates(datStart=datStart,datFinish=datFinish)
+  #     progress("Extending dates",file)
+  #   }else{
+  #     dateExtnd=obs[,c("year","month","day")]                                              # make the same as observed
+  #     progress("Length of time series cannot be increased using simple scaling",file)
+  #   }
+  } else {
     dateExtnd=obs[,c("year","month","day")]                                               # make the same as observed
   }
   return(dateExtnd)

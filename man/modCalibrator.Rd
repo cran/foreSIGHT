@@ -9,12 +9,14 @@ Calibrates weather generator models specified using modelTag.
 }
 \usage{
 modCalibrator(obs = NULL,
-              modelTag = NULL)
+              modelTag = NULL,
+              window = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{obs}{A dataframe of observed climate data in the form \emph{Year Month Day P Temp}.}
   \item{modelTag}{A character vector of which stochastic models to use to create each climate variable. Supported tags are shown in under details below.}
+  \item{window}{moving average window to calibrate daily gamma parameters for the modelTag \code{"P-har-WGEN"}.}
 }
 \details{
 modelTag provides the main function with requested models. modelTag is vector of any of the following supported models:
