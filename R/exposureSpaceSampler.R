@@ -41,7 +41,7 @@ expSpaceSampManager<-function(exSpArgs=NULL,
   
   if(is.character(exSpArgs)==TRUE) {
     print("READING ATTRIBUTE TARGETS FROM FILE")
-    targetMat=read.table(file=exSpArgs,sep=",",header=TRUE)  #IF TARGET MAT IN CSV
+    targetMat=utils::read.table(file=exSpArgs,sep=",",header=TRUE)  #IF TARGET MAT IN CSV
     attRot=NULL
   }else{
     if(exSpArgs$type!="OAT"){

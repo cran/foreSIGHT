@@ -24,11 +24,11 @@ modEvaluate <- function(data,                                         # observat
   
   # Rplot or print plots to pdf
   if (write_pdf == TRUE) {
-    pdf(paste0(out_path, "\\", out_filename), width = 12, height = 10)
+    grDevices::pdf(paste0(out_path, "\\", out_filename), width = 12, height = 10)
     for (i in seq(1, length(qqplot_list))) {
       print(qqplot_list[[i]])
     }
-    dev.off()
+    grDevices::dev.off()
     return(invisible())
   } else {
     return(qqplot_list)
@@ -53,7 +53,7 @@ read_simData <- function(path,
       stop( paste0("The Simulation data file \"", file, "\" does not exist."), call. = FALSE )
     }
     else {
-      simRep <- read.csv(file, header = TRUE)
+      simRep <- utils::read.csv(file, header = TRUE)
       simData[[i_rep]] <- simRep
       rm(simRep)
     }
@@ -234,9 +234,9 @@ agg_sort_obsSim <- function(obsDataByYr,
   names(simSort) <- c("quant", "data")
   
   # Calc Stats of Sim
-  simLower <- aggregate(x = simSort$data, by = list(simSort$quant), FUN = quantile, probs = 0.025)[[2]]
-  simMedian <- aggregate(x = simSort$data, by = list(simSort$quant), FUN = median)[[2]]
-  simUpper <- aggregate(x = simSort$data, by = list(simSort$quant), FUN = quantile, probs = 0.975)[[2]]
+  simLower <- stats::aggregate(x = simSort$data, by = list(simSort$quant), FUN = stats::quantile, probs = 0.025)[[2]]
+  simMedian <- stats::aggregate(x = simSort$data, by = list(simSort$quant), FUN = stats::median)[[2]]
+  simUpper <- stats::aggregate(x = simSort$data, by = list(simSort$quant), FUN = stats::quantile, probs = 0.975)[[2]]
   
   return(list("obs" = obsSort,
               "simLower" = simLower,
@@ -254,12 +254,12 @@ agg_sort_obsSim <- function(obsDataByYr,
 
 agg_sort <- function(data, agg_FUN) {
   
-  dataSummary <- aggregate(x = data$data, by = list(data$year), FUN = agg_FUN$FUN, na.rm = agg_FUN$na.rm)[2]
+  dataSummary <- stats::aggregate(x = data$data, by = list(data$year), FUN = agg_FUN$FUN, na.rm = agg_FUN$na.rm)[2]
   return(sort(dataSummary[, 1]))
   
 }
 
-ma <- function(x, n = 5){filter(x, rep(1 / n, n), sides = 2)}
+ma <- function(x, n = 5){stats::filter(x, rep(1 / n, n), sides = 2)}
 ma2 <- ma
 formals(ma2)$n <- 2
 

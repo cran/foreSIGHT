@@ -145,17 +145,17 @@ str.end<-function(x,n,pad=" "){
 
 # FUNCTION TO ADD BOXPLOT WITH PROBLIMS
 boxplot.func=function(z,at.pt=NULL,decile.low="10%",decile.high="90%",col=NULL,medcol=NULL,boxwex=0.7){
-  boxplot.info <- boxplot(z, plot=FALSE,na.action=T);deciles <- quantile(z, probs=seq(0,1,0.05),na.rm=T)
+  boxplot.info <- graphics::boxplot(z, plot=FALSE,na.action=T);deciles <- stats::quantile(z, probs=seq(0,1,0.05),na.rm=T)
   boxplot.info$stats[1] <- deciles[decile.low]; boxplot.info$stats[5] <- deciles[decile.high]
-  bxp(boxplot.info,at=at.pt,add=T,col=col,na.action=T,range=0,boxwex=boxwex,outline=F,medcol=medcol,yaxt='n',boxfill=col)
+  graphics::bxp(boxplot.info,at=at.pt,add=T,col=col,na.action=T,range=0,boxwex=boxwex,outline=F,medcol=medcol,yaxt='n',boxfill=col)
 }
 
 # FUNCTION TO ALLOW TRANSPARENCY OF COLOUR
 add.alpha <- function(COLORS, ALPHA){
   if(missing(ALPHA)) stop("provide a value for alpha between 0 and 1")
-  RGB <- col2rgb(COLORS, alpha=TRUE)
+  RGB <- grDevices::col2rgb(COLORS, alpha=TRUE)
   RGB[4,] <- round(RGB[4,]*ALPHA)
-  NEW.COLORS <- rgb(RGB[1,], RGB[2,], RGB[3,], RGB[4,], maxColorValue = 255)
+  NEW.COLORS <- grDevices::rgb(RGB[1,], RGB[2,], RGB[3,], RGB[4,], maxColorValue = 255)
   return(NEW.COLORS)
 }
 
@@ -170,8 +170,13 @@ outersect=function(x,y){
 
 #INPUTS - TS, INDEXES,LIST OF REQUESTED STATS
 #GENERIC EXTRACTOR FUNCTION
-extractor=function(func=NULL,data=NULL,indx=NULL,...){ # returns a number
-  extractor.out=func(data[indx],...)
+extractor=function(func=NULL,data=NULL,indx=NULL,attArgs=NULL,...){ # returns a number
+  if (is.null(attArgs)){
+    extractor.out=func(data=data[indx],...)
+  } else {
+    extractor.out=func(data=data[indx],attArgs=attArgs,...)
+    
+  }
   return(extractor.out)
 }
 
@@ -187,8 +192,8 @@ extractor.reps=function(func=NULL,data=NULL,indx=NULL,nReps=NULL,...){  # return
 #EXTRACTOR FOR MULTIPLE PERIODS (TEMPORARY FUNCTION here)
 extractor.summaryMean<-function(func=NULL,
                                 data=NULL,
-                                indx=NULL,
-                                nperiod=NULL,...){
+                                indx=NULL,...){
+  nperiod=length(indx)
   sim.series=rep(NA,nperiod)
   for(p in 1:nperiod){
     sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
@@ -207,14 +212,14 @@ extractor.summarySD<-function(func=NULL,
   for(p in 1:nperiod){
     sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
   }
-  m.series=sd(x=sim.series,na.rm=TRUE)
+  m.series=stats::sd(x=sim.series,na.rm=TRUE)
   return(m.series)
 }
 
 extractor.summaryMin<-function(func=NULL,
                               data=NULL,
-                              indx=NULL,
-                              nperiod=NULL,...){
+                              indx=NULL,...){
+  nperiod=length(indx)
   sim.series=rep(NA,nperiod)
   for(p in 1:nperiod){
     sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
@@ -225,8 +230,8 @@ extractor.summaryMin<-function(func=NULL,
 
 extractor.summaryMax<-function(func=NULL,
                                data=NULL,
-                               indx=NULL,
-                               nperiod=NULL,...){
+                               indx=NULL,...){
+  nperiod=length(indx)
   sim.series=rep(NA,nperiod)
   for(p in 1:nperiod){
     sim.series[p]=extractor(func=func,data=data,indx=indx[[p]],...)
@@ -238,9 +243,8 @@ extractor.summaryMax<-function(func=NULL,
 #MULTIPLE EXTRACTOR
 extractor.multPeriod<-function(func=NULL,
                               data=NULL,
-                              indx=NULL,
-                              nperiod=NULL,...){
-  
+                              indx=NULL,...){
+  nperiod=length(indx)
   tmp=rep(NA,nperiod)
   for(p in 1:nperiod){
     tmp[p]=extractor(func=func,data=data,indx=indx[[p]],...)
@@ -253,12 +257,12 @@ extractor.multPeriod<-function(func=NULL,
 extractor.cv<-function(func=NULL,
                        data=NULL,
                        indx=NULL,
-                       nperiod=NULL,
                        ...
   
 ){
+  nperiod=length(indx)
   tmp=extractor.multPeriod(func=func,data=data,indx=indx,nperiod=nperiod,...)
-  cv=sd(tmp,na.rm=TRUE)/mean(tmp,na.rm=TRUE)
+  cv=stats::sd(tmp,na.rm=TRUE)/mean(tmp,na.rm=TRUE)
   
   return(cv)
 }
@@ -319,7 +323,7 @@ get.wet.sd=function(data=NULL,threshold=NULL){
   if(identical(length(ind),integer(0))){
     temp=0                          #if no wet days
   }else{
-    temp=sd(data[ind],na.rm=T)
+    temp=stats::sd(data[ind],na.rm=T)
   }
   return(temp)
 }
@@ -363,26 +367,29 @@ get.median.wet=function(data=NULL,threshold=NULL){
   if(identical(length(ind),integer(0))){
     temp=0                          #if no wet days
   }else{
-    temp=median(data[ind],na.rm=T)
+    temp=stats::median(data[ind],na.rm=T)
   }
   return(temp)
 }
 
 get.medians=function(data=NULL){  
-  temp=median(data,na.rm=T)
+  temp=stats::median(data,na.rm=T)
   return(temp)
 }
 
 get.quantile=function(data=NULL,  #vector
                       quant=NULL  #quantile (between 0.001-0.999)
                       ){  
-  temp=quantile(x=data,probs=quant,na.rm=TRUE,names = FALSE)
+  temp=stats::quantile(x=data,probs=quant,na.rm=TRUE,names = FALSE)
   return(temp)
 }
 
-get.quantile.rng=function(data=NULL  #vector
-                          ){  
-  temp=quantile(x=data,probs=0.95,na.rm=TRUE,names = FALSE)[1]-quantile(x=data,probs=0.05,na.rm=TRUE,names = FALSE)[1]
+get.quantile.rng=function(data=NULL,  #vector
+                          lim=0.9 # limits of range (e.g. 0.9 for 5-95%)
+){  
+  p1 = (1.-lim)/2.
+  p2 = (1.+lim)/2.
+  temp=stats::quantile(x=data,probs=p2,na.rm=TRUE,names = FALSE)[1]-stats::quantile(x=data,probs=p1,na.rm=TRUE,names = FALSE)[1]
   return(temp)
 }
 
@@ -392,7 +399,7 @@ get.quantile.wet=function(data=NULL,  #vector
                           threshold=NULL  #wet day threshold
 ){  
   data[which(data<=threshold)]=NA
-  temp=quantile(x=data,probs=quant,na.rm=TRUE,names = FALSE)
+  temp=stats::quantile(x=data,probs=quant,na.rm=TRUE,names = FALSE)
   return(temp)
 }
 
@@ -538,24 +545,24 @@ plot.attrib.perf.solo=function(rel.diff,                   #relative difference 
   
   
   #PLOT BARPLOT
-  barplot(height = cbind(x = x/100),horiz=T,xaxt='n',yaxt='n',
+  graphics::barplot(height = cbind(x = x/100),horiz=T,xaxt='n',yaxt='n',
           beside = FALSE,width = c(0.1),col = traffic.col,
           args.legend = list(x = "topleft"))
   
   #ADD TEXT ANNOTATIONS
   if(ind==3){bg.col="black"; front.col="white"}else{bg.col="white";front.col="black"}   #text background colour updater
   if((targetType == "pc")|(targetType == "frac")){
-    text(labels=paste(format(rel.diff,digits=2),"%",sep=""),x=0.5,y=y.text,cex=cex.mult,pos=3,col=front.col,bg=bg.col)
+    graphics::text(labels=paste(format(rel.diff,digits=2),"%",sep=""),x=0.5,y=y.text,cex=cex.mult,pos=3,col=front.col,bg=bg.col)
   }else{
-    text(labels=paste(format(rel.diff,digits=2)," delta",sep=""),x=0.5,y=y.text,cex=cex.mult,pos=3,col=front.col,bg=bg.col)
+    graphics::text(labels=paste(format(rel.diff,digits=2)," delta",sep=""),x=0.5,y=y.text,cex=cex.mult,pos=3,col=front.col,bg=bg.col)
   }
   
   #ADD SUBTITLE
-  mtext(text=att.name,side=1,at=0.5,cex=cex.mult.sub,line=mtext.line)
+  graphics::mtext(text=att.name,side=1,at=0.5,cex=cex.mult.sub,line=mtext.line)
   
   #ADD TITLE
   if(!is.null(prim.lab)){
-    mtext(text=prim.lab,side=3,at=0.5,cex=cex.mult.sub,line=mtext.line)
+    graphics::mtext(text=prim.lab,side=3,at=0.5,cex=cex.mult.sub,line=mtext.line)
   }
 }
 

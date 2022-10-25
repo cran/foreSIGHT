@@ -79,6 +79,7 @@ getVarUnits <- function(varNames) {
 # Update the Temp, PET and Radn models to have the har-wgen version, like precipitation
 # Temp-har-wgen, PET-har-wgen, Radn-har-wgen, 
 modelTaglist=c("Simple-ann",
+               "Simple-seas",
                "P-ann-wgen",
                "P-seas-wgen",
                "P-har-wgen",
@@ -107,6 +108,7 @@ modelTimeStep=c("daily",
                 "daily",
                 "daily",
                 "daily",
+                "daily",
                 "daily"
                 )
 names(modelTimeStep) <- modelTaglist
@@ -117,42 +119,41 @@ defaultModelTags <- c(P = "P-har-wgen",
                       Radn = "Radn-har26-wgen")
 
 # existing foreSIGHT variables
-fSVars <- unique(sapply(strsplit(modelTaglist[-(modelTaglist=="Simple-ann")], "-"), `[[`, 1))
+fSVars <- unique(sapply(strsplit(modelTaglist[!(modelTaglist%in%c("Simple-ann","Simple-seas"))], "-"), `[[`, 1))
 
-#' Prints the names of valid attributes
+#' Prints the list of built-in attribute functions
 #'
-#' \code{viewAttributes()} prints the names of valid attributes that may be used to create an exposure space.
-#' @details The function does not take any input arguments. The valid attributes that may be specified as \code{attPerturb} or \code{attHold} to create an exposure space using the function \code{createExpSpace} are printed.
-#' @seealso \code{createExpSpace}, \code{viewAttributeDef}
+#' \code{viewAttributeFuncs} prints the list of built-in attribute functions
+#' @seealso \code{viewAttributeDef}, \code{createExpSpace}
 #' @examples
-#' # To view the valid attributes.
-#' viewAttributes()
-#' 
-#' # To view the definition of any valid attribute
-#' viewAttributeDef("P_ann_tot_m")
+#' # To view the list of built-in functions used to calculate attributes
+#' viewAttributeFuncs()
 #' @export
-viewAttributes <- function() {
-  print(names(attribute.funcs))
+viewAttributeFuncs <- function() {
+  print(attributeFuncs())
+}
+ 
+attributeFuncs = function() {
+  allFuncs=utils::lsf.str("package:foreSIGHT")
+  funcs=allFuncs[which(startsWith(allFuncs,'func_'))]
+  attFuncs = c()
+  for (a in 1:length(funcs)){
+    attFuncs[a] = strsplit(funcs,'func_')[[a]][2]
+  }
+  return(attFuncs)
 }
 
 #' Prints the definition of an attribute
 #'
 #' \code{viewAttributeDef} prints the short definition of a valid attribute
 #' @param attribute A string; the name of the attribute.
-#' @seealso \code{viewAttributes}, \code{createExpSpace}
+#' @seealso \code{createExpSpace}
 #' @examples
 #' # To view the definition of any valid attribute
 #' viewAttributeDef("P_ann_tot_m")
-#' # To view the valid attributes
-#' viewAttributes()
 #' @export
 viewAttributeDef <- function(attribute) {
-  if(attribute %in% names(attribute.funcs)) {
-    print(tagBlender(attribute))
-  } else {
-    print("Please choose a valid attribute: The valid attributes are:")
-    viewAttributes()
-  }
+  print(tagBlender(attribute))
 }
 
 #' Prints the names and bounds of the parameters of the stochastic models
@@ -197,11 +198,14 @@ get.model.info<-function(modelTag=NULL #string used to specify model for stochas
   modelInfo=list()
   #SET UP MODEL RELATED PARAMETERS
   switch(modelTag,
-         "Simple-ann"  = {modelInfo$simVar="All"
+         "Simple-ann"  = {modelInfo$simVar=c()
          modelInfo$simPriority=1 
          modelInfo$nperiod=1
          },
-         
+         "Simple-seas"  = {modelInfo$simVar=c()
+         modelInfo$simPriority=1 
+         modelInfo$nperiod=1
+         },
          "P-seas-wgen" = {modelInfo$simVar="P"
          modelInfo$simPriority=1
          modelInfo$nperiod=4       # 4 periods in a year

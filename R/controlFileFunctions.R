@@ -22,7 +22,6 @@ harDefinition <- c(P = "har",
 #' \code{viewModels} prints the stochastic model options available for the different hydroclimatic variables in foreSIGHT.
 #'                   These options may be used to create an controlFile for input to function \code{generateScenarios}.
 #' @param variable String; the variable name. Type \code{viewModels()} without arguments to view the valid variable names.
-#' @param compatibleAtts TRUE/FALSE (default is FALSE). Whether the attributes compatible with each model should be printed.
 #' @seealso \code{writeControlFile}, \code{generateScenarios}
 #' @examples
 #' # To view the valid variable names use the function without arguments
@@ -34,10 +33,10 @@ harDefinition <- c(P = "har",
 #' viewModels("Radn")
 #' viewModels("PET")
 #' @export
-viewModels <- function(variable = NULL, compatibleAtts = FALSE) {
-  
+viewModels <- function(variable = NULL) {
+    
   # vector of stochastic model tags - exclude scaling
-  stochModels <- modelTaglist[-(modelTaglist=="Simple-ann")]
+  stochModels <- modelTaglist[!(modelTaglist%in%c("Simple-ann","Simple-seas"))]
   
   # get stochastic model Info
   varNames <- sapply(strsplit(stochModels, "-"), `[[`, 1)
@@ -70,17 +69,6 @@ viewModels <- function(variable = NULL, compatibleAtts = FALSE) {
     varModels <- data.frame(modelType[ind], parVariationDef[parVariation[ind]], modelTimeStep, defaultModel)
     colnames(varModels)[1:2] <- mdlFields
     rownames(varModels) <- NULL
-    
-    if (compatibleAtts) {
-      compAtts <- model_attribute_comb[[variable]]
-      rownames(compAtts) <- compAtts[ ,1]; compAtts <- t(compAtts[ ,-1])
-      if (length(ind) == 1) {
-        varModels <-data.frame(c(varModels, compAtts[stochModels[ind], ]))
-      } else {
-        varModels <- cbind(varModels, compAtts[stochModels[ind], ])
-        rownames(varModels) <- NULL
-      }
-    }
     
     return(varModels)
   }
@@ -120,9 +108,9 @@ getModelSpec <- function(colName, var = NULL) {
 # The possible values of these fields should always be a string/number (i.e., not a vector)
 mdlFields <- c("modelType", "modelParameterVariation") #NOTE: Both modelType & modelParameterVariation have to be specified
 
-
 mdlBounds <- c("modelParameterBounds")
 
+spatialOps = c("spatialOptions")
 
 # Optimization fields - can be specified independent of - mdlFields & mdlBounds
 #=======================================================================================
@@ -136,6 +124,9 @@ getNamelistMaster <- function(){
     outList[[f]] <- getModelSpec(f)
   }
   for (f in mdlBounds) {
+    outList[[f]] <- list()
+  }
+  for (f in spatialOps) {
     outList[[f]] <- list()
   }
   for (f in optFields) {
@@ -409,7 +400,7 @@ toNamelist <- function(modelTag, modelInfoMod = NULL, optimArgs = NULL, attPenal
   #-----------------------------------------------------
   if (!is.null(modelInfoMod) & !is.null(names(modelInfoMod))) {
     modelInfoDef <- get.multi.model.info(modelTag)
-    modelInfo <- modifyList(modelInfoDef, modelInfoMod)
+    modelInfo <- utils::modifyList(modelInfoDef, modelInfoMod)
     modelParameterBounds <- getModelParBounds(modelTag, modelInfo)
   } else {
     modelParameterBounds <- NULL

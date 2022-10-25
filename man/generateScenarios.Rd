@@ -14,9 +14,14 @@ generateScenarios(
 )
 }
 \arguments{
-\item{reference}{data.frame; contains reference daily climate data in a data frame with columns named \emph{year} \emph{month} \emph{day} \emph{*variable_name1*} \emph{*variable_name2*}. 
-Use \code{viewModels()} to view the valid variable names. Note that the first three columns of the data.frame contain the year, month, and day of the reference. The columns have to be named as specified.
-Please refer data provided with the package that may be loaded using \code{data(tankDat)} for an example of the expected format of \code{reference}.}
+\item{reference}{data.frame or list; contains reference daily climate data. \cr 
+For single site data, \code{reference} is a data.frame with columns named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. 
+Note that the first three columns of the data.frame contain the year, month, and day of the data. 
+The columns have to be named as specified. 
+For multi-site data, \code{reference} is a list, with elements named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. List format is suitable for both single and multi-site data. 
+Climate variables are specified as matrices, with columns for each site. \cr   
+Use \code{viewModels()} to view the valid variable names. 
+Please refer to data provided with the package that may be loaded using \code{data(tankDat)} and \code{data(barossaDat)} for examples of the expected format of single site and multi-site \code{reference}.}
 
 \item{expSpace}{a list; created using the function \code{createExpSpace}}
 
@@ -32,7 +37,9 @@ The seed used will be specified in the output. This argument is intended for use
 \item{controlFile}{a string; to specify the model/optimisation options used for simulating time series data. The valid values are:
 \itemize{
 \item {\code{NULL}} {: the simulation uses the foreSIGHT default stochastic model settings.}
-\item {\code{"scaling"}} {: the simulation uses simple scaling instead of a stochastic model.}
+\item {\code{"scaling"}} {: the simulation uses scaling (simple/seasonal) instead of a stochastic model.
+                          If all attributes in \emph{expSpace} are annual totals/averages, then simple scaling is used.
+                          If seasonality ratio attributes are also included in \emph{expSpace}, then seasonal scaling is used.}
 \item {\code{path to a JSON file}} {: the JSON file contains advanced options specify the stochastic model and optimisation inputs. 
                   These options can be used to change stochastic model types, overwrite default model parameter bounds, change default optimisation arguments, and set penalty attributes to be used in optimisation. 
                   Please refer to the function \code{writeControlFile} in order to create an \code{controlFile} JSON file.
@@ -47,7 +54,41 @@ The function returns a list containing the time series data generated. The list 
 \code{generateScenarios} produces time series of hydroclimatic variables using requested climate attributes that correspond to a target exposure space using a reference daily time series as an input.
 }
 \examples{
-# Example 1: Stochastic simulation using foreSIGHT default settings
+# Example 1: Simple scaling
+#-----------------------------------------------------------------------
+attPerturb<-c("P_ann_tot_m","Temp_ann_avg_m")
+attPerturbType = "regGrid"
+attPerturbSamp = c(2, 2)
+attPerturbMin = c(0.8, -1)
+attPerturbMax = c(1.1, 1)
+expSpace <- createExpSpace(attPerturb = attPerturb,
+                           attPerturbSamp = attPerturbSamp, 
+                           attPerturbMin = attPerturbMin, 
+                           attPerturbMax = attPerturbMax, 
+                           attPerturbType = attPerturbType)
+data(tankDat)
+simScaling <- generateScenarios(reference = tank_obs,
+                                expSpace = expSpace,
+                                controlFile = "scaling")
+                                
+# Example 2: Seasonal scaling
+#-----------------------------------------------------------------------
+attPerturb<-c("P_ann_tot_m","P_ann_seasRatio")
+attPerturbType = "regGrid"
+attPerturbSamp = c(2, 2)
+attPerturbMin = c(0.8, 0.9)
+attPerturbMax = c(1.1, 1.2)
+expSpace <- createExpSpace(attPerturb = attPerturb,
+                           attPerturbSamp = attPerturbSamp, 
+                           attPerturbMin = attPerturbMin, 
+                           attPerturbMax = attPerturbMax, 
+                           attPerturbType = attPerturbType)
+data(tankDat)
+seasScaling <- generateScenarios(reference = tank_obs,
+                                expSpace = expSpace,
+                                controlFile = "scaling")
+                                
+# Example 3: Stochastic simulation using foreSIGHT default settings
 #----------------------------------------------------------------------
 \dontrun{
 # create an exposure space
@@ -72,23 +113,63 @@ simStochastic <- generateScenarios(reference = tank_obs,
                                    expSpace = expSpace,
                                    simLengthNyrs = 30)
                                    }
-# Example 2: Simple scaling
+# Example 4: Simple Scaling with multi-site data 
 #-----------------------------------------------------------------------
-attPerturb<-c("P_ann_tot_m","Temp_ann_avg_m")
+attPerturb <- c("P_ann_tot_m","P_ann_seasRatio")
 attPerturbType = "regGrid"
-attPerturbSamp = c(2, 2)
-attPerturbMin = c(0.8, -1)
-attPerturbMax = c(1.1, 1)
+attPerturbSamp = c(3, 3)
+attPerturbMin = c(0.8, 1.2)
+attPerturbMax = c(0.8, 1.2)
 expSpace <- createExpSpace(attPerturb = attPerturb,
                            attPerturbSamp = attPerturbSamp, 
                            attPerturbMin = attPerturbMin, 
                            attPerturbMax = attPerturbMax, 
                            attPerturbType = attPerturbType)
-data(tankDat)
-simScaling <- generateScenarios(reference = tank_obs,
+# load multi-site rainfall data                        
+data(barossaDat)
+# perform simple scaling
+simScaling <- generateScenarios(reference = barossa_obs,
                                 expSpace = expSpace,
                                 controlFile = "scaling")
                                 
+# Example 5: Multi-site stochastic simulation
+#-----------------------------------------------------------------------
+\dontrun{
+attPerturb <- c("P_ann_tot_m")
+attHold <- c("P_ann_wettest6monSeasRatio","P_ann_wettest6monPeakDay",
+"P_ann_P99","P_ann_avgWSD_m", "P_ann_nWetT0.999_m")
+attPerturbType = "regGrid"
+# consider unperturbed climates in this example
+attPerturbSamp = attPerturbMin = attPerturbMax = c(1) 
+expSpace <- createExpSpace(attPerturb = attPerturb, 
+                           attPerturbSamp = attPerturbSamp, 
+                           attPerturbMin = attPerturbMin, 
+                           attPerturbMax = attPerturbMax,
+                           attPerturbType = attPerturbType, 
+                           attHold = attHold)
+# load multi-site rainfall data                        
+data(barossaDat)
+# specify the penalty settings in a list
+controlFileList <- list()
+controlFileList[["penaltyAttributes"]] <- c("P_ann_tot_m",
+"P_ann_wettest6monSeasRatio","P_ann_wettest6monPeakDay")
+controlFileList[["penaltyWeights"]] <- c(0.5,0.5,0.5)
+# specify the alternate model selections
+controlFileList[["modelType"]] <- list()
+controlFileList[["modelType"]][["P"]] <- "latent"
+# specify model parameter selection
+controlFileList[["modelParameterVariation"]] <- list()
+controlFileList[["modelParameterVariation"]][["P"]] <- "harmonic"
+# specify settings for multi-site model
+controlFileList[["spatialOptions"]] <- list()
+# specify spatial correlation perturbation factor 
+controlFileList[["spatialOptions"]][["spatCorFac"]] = 0.9
+# write control file sttings to file
+controlFileJSON <- jsonlite::toJSON(controlFileList, pretty = TRUE, auto_unbox = TRUE)
+write(controlFileJSON, file = paste0(tempdir(), "controlFile.json"))
+# run multi-site stochastic simulation - this will take a long time (e.g. hours)
+sim <- generateScenarios(reference = barossa_obs, expSpace = expSpace,
+                         controlFile = paste0(tempdir(), "controlFile.json"),seed=1)}
 }
 \seealso{
 \code{createExpSpace}, \code{writeControlFile}, \code{viewModels}

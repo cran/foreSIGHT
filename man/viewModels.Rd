@@ -4,12 +4,10 @@
 \alias{viewModels}
 \title{Prints the available stochastic model options}
 \usage{
-viewModels(variable = NULL, compatibleAtts = FALSE)
+viewModels(variable = NULL)
 }
 \arguments{
 \item{variable}{String; the variable name. Type \code{viewModels()} without arguments to view the valid variable names.}
-
-\item{compatibleAtts}{TRUE/FALSE (default is FALSE). Whether the attributes compatible with each model should be printed.}
 }
 \description{
 \code{viewModels} prints the stochastic model options available for the different hydroclimatic variables in foreSIGHT.

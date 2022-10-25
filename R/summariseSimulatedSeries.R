@@ -350,7 +350,7 @@ plotScenarios <- function(sim,
       file.remove(fileName)
     }
     #pdf(file = fileName, width = 8.27, height = 11.69, paper = "a4")
-    pdf(file = fileName, width = 11.69, height = 8.27, paper = "a4r")
+    grDevices::pdf(file = fileName, width = 11.69, height = 8.27, paper = "a4r")
     frontPageScenarios(sim, simName)
     advancedPageScenarios(sim)
 
@@ -396,7 +396,7 @@ plotScenarios <- function(sim,
                          #rel_heights = c(8,2)
       # print(plots[["SD"]][[i]])
     }
-    dev.off()
+    grDevices::dev.off()
     cat(paste0("\nFigures are saved to file: ", fileName, "."))
   } else {
     if (dim(simTraffic[["mean"]][[1]])[1] > 100) cat("The scenarios may contain too many targets to be examined in an R plot. Please call plotScenarios with writeToFile = TRUE to save the figures in a pdf file.")
@@ -504,7 +504,7 @@ plotTrafficHeatmap <- function(targAttList,
     nAtt[[m]] <- length(unique(targAttMatrix$Attribute))
   
     # Create labels using full attribute names
-    attDef[[m]] <- paste0(mapply(tagBlender_noUnits, attNameList[[m]], USE.NAMES = FALSE), " (", heldFlag, ")")
+    attDef[[m]] <- paste0(mapply(tagBlender, attNameList[[m]], USE.NAMES = FALSE), " (", heldFlag, ")")
     nPrim[[m]] <- length(which(markPrim=="*"))
   
     # Identifying points to add hlines betweeen variables
@@ -697,9 +697,9 @@ plotTarget <- function(obs,                    # observations
     
     if (writeToFile) {
       #PLOT STUFF TO A PDF
-      pdf(file=fileName,height=8.27,width=11.69)   #landscape a4 page
+      grDevices::pdf(file=fileName,height=8.27,width=11.69)   #landscape a4 page
     }
-    par(mar=c(3,5,3,3),oma=c(2,2,2,2))
+    graphics::par(mar=c(3,5,3,3),oma=c(2,2,2,2))
     
     # Anjana: Need to modify this for the updated model settings
     #===========================================================
@@ -723,8 +723,8 @@ plotTarget <- function(obs,                    # observations
     
     
     #SET LAYOUT - 2 ROWS, 1 COLUMN
-    par(mfrow=c(2,1),xaxs="i")
-    par(mar=c(3,5,3,3),oma=c(3,5,3,3),xpd=FALSE)
+    graphics::par(mfrow=c(2,1),xaxs="i")
+    graphics::par(mar=c(3,5,3,3),oma=c(3,5,3,3),xpd=FALSE)
     for(mod in 1:length(simVar)){
       plotVar=simVar[mod]
 
@@ -753,8 +753,8 @@ plotTarget <- function(obs,                    # observations
       # print(simDat[[plotVar]][["ann_count_nWet"]])
 
       #SET LAYOUT - 2 ROWS, 1 COLUMN
-      par(mfrow=c(2,1),xaxs="i",xpd=FALSE)
-      par(mar=c(3,5,3,3),oma=c(3,5,3,3))
+      graphics::par(mfrow=c(2,1),xaxs="i",xpd=FALSE)
+      graphics::par(mar=c(3,5,3,3),oma=c(3,5,3,3))
       #REGULAR PLOTS
       #monthwise batch
       runTag="mon_mean_dyAll"; lab=paste(plotVar,": daily mean", sep="")
@@ -793,8 +793,8 @@ plotTarget <- function(obs,                    # observations
 
       #annual batch
       #change
-      par(mfrow=c(2,3),xaxs="i",xpd=FALSE)  #assuming a4 landscape layout
-      par(mar=c(3,5,3,3),oma=c(3,5,3,3))
+      graphics::par(mfrow=c(2,3),xaxs="i",xpd=FALSE)  #assuming a4 landscape layout
+      graphics::par(mar=c(3,5,3,3),oma=c(3,5,3,3))
 
       runTag="ann_mean_dyAll"; lab=paste(plotVar,": daily mean", sep="")
       annual.boxplots(simDat=simDat[[plotVar]][[runTag]],obsDat=obsDat[[plotVar]][[runTag]],compObs=TRUE, metricTag=lab)
@@ -818,7 +818,7 @@ plotTarget <- function(obs,                    # observations
       }
 
     }
-    if (writeToFile) dev.off()  #STOP PLOTTING TO PDF
+    if (writeToFile) grDevices::dev.off()  #STOP PLOTTING TO PDF
   
   
 }

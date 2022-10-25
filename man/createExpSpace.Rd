@@ -63,13 +63,9 @@ The exposure space as a list containing the following fields:
 \code{createExpSpace} returns a list containing the targets (\code{targetMat}) and the metadata (input arguments) used to create the exposure space.
 }
 \details{
-The list of valid attributes that may be specified using \code{attPerturb} or \code{attHold} can be viewed using the function
-\code{viewAttributes()}. The definition of the attribute can be viewed using the function \code{viewAttributeDef}.
+See "Detailed Tutorial: Climate 'Stress-Testing' using *fore*SIGHT" vignette for specifying attribute names for \code{attPerturb} and \code{attHold}. The definition of the attribute can be viewed using the function \code{viewAttributeDef}.
 }
 \examples{
-# To view the valid attributes. The function does not take any input arguments. 
-viewAttributes()
-
 # To view the definition of any valid attribute
 viewAttributeDef("P_ann_tot_m")
 
@@ -111,5 +107,5 @@ attPerturbMin = attPerturbMin, attPerturbMax = attPerturbMax, attPerturbType = a
 attHold = NULL, attTargetsFile = NULL)
 }
 \seealso{
-\code{generateScenarios}, \code{viewAttributes}, \code{viewAttributeDef}
+\code{generateScenarios}, \code{viewAttributeDef}
 }

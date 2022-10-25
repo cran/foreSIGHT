@@ -248,7 +248,7 @@ tankPerformance<-function(data=NULL,
   
   # to test need to write to csv
   if(write.file==TRUE){
-    write.csv(out, file=fnam, quote=F, row.names=F)  #write tank info to file
+    utils::write.csv(out, file=fnam, quote=F, row.names=F)  #write tank info to file
   }
   
   #-----tank model eval - sort of based on university of warwick metrics--------

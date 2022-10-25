@@ -14,7 +14,8 @@ plotPerformanceSpaceMulti(
   attSlices = NULL,
   topReps = NULL,
   climData = NULL,
-  col = NULL
+  col = NULL,
+  axesPercentLabel = FALSE
 )
 }
 \arguments{
@@ -50,6 +51,8 @@ Please refer data provided with the package that may be loaded using \code{data(
 
 \item{col}{a vector of colours; The length of the vector should atleast be sufficient to assign unique colours to all
 the different values in the generated plot. If \code{NULL}, the default foreSIGHT colours is used.}
+
+\item{axesPercentLabel}{a logical flag; if TRUE x and y axes to be displayed in terms of percentage change instead of fraction}
 }
 \value{
 The plot showing the number of thresholds exceeded and the ggplot object.
@@ -72,19 +75,30 @@ data("egSimPerformance")
 data("egSimSummary")
 data("egClimData")
 
-plotPerformanceSpaceMulti(egSimPerformance, egSimSummary, 
+plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
 perfThreshMin = c(NA, 0.80), perfThreshMax = c(30, NA))
 
+#replot with axes as percentage changes
+plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
+perfThreshMin = c(NA, 0.80), perfThreshMax = c(30, NA),axesPercentLabel=TRUE)
+
 # add alternate climate data and specify different colours for the plot
-plotPerformanceSpaceMulti(egSimPerformance, egSimSummary, perfThreshMin = c(NA, 0.80), 
-perfThreshMax = c(30, NA), climData = egClimData, col = viridisLite::magma(3))
+plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
+                          perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+                          climData = egClimData, col = viridisLite::magma(3))
 
 # example using simple scaled simulations
 data("egScalPerformance")
 data("egScalSummary")
 data("egClimData")
-plotPerformanceSpaceMulti(egScalPerformance, egScalSummary, perfThreshMin = c(NA, 0.80), 
-perfThreshMax = c(30, NA), climData = egClimData)
+plotPerformanceSpaceMulti(performance=egScalPerformance, sim=egScalSummary, 
+                          perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+                          climData = egClimData)
+
+# replot with axes as percentage changes (Note: modifies fractional change attributes only)
+plotPerformanceSpaceMulti(performance=egScalPerformance, sim=egScalSummary, 
+                          perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+                          climData = egClimData,axesPercentLabel=TRUE)
 }
 \seealso{
 \code{runSystemModel}, \code{generateScenarios}, \code{getSimSummary}, \code{plotPerformanceSpace}

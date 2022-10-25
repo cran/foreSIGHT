@@ -23,7 +23,8 @@ simulateTarget<-function(
                     parLoc=NULL,        #which pars belong to which model parLoc[[mod]]=c(start,end)
                     parSim=NULL,        #pars used to simulate targets so far
                     setSeed=1234,
-                    file=NULL
+                    file=NULL,
+                    randomUnitNormalVector=NULL 
                    # resid_ts=NULL    - for other models not currently in play
                     ){
   
@@ -49,7 +50,11 @@ simulateTarget<-function(
   attSim=list()          #Make list to store simulated attributes
   targetSim=list()       #Make list to store simulated attributes(target space converted)
   for(mod in 1:nMod){
-    randomVector <- runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
+    if (is.null(randomUnitNormalVector)){
+      randomVector <- stats::runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
+    } else {
+      randomVector=NULL
+    }
     
      #IF CONDITIONED ON DRY-WET STATUS, populate wdStatus
       switch(simVar[mod], #
@@ -72,19 +77,26 @@ simulateTarget<-function(
                     )
     #-----------------------------------
     
-    if(length(which(modelInfo[[modelTag[mod]]]$minBound==modelInfo[[modelTag[mod]]]$maxBound))==length(modelInfo[[modelTag[mod]]]$minBound)){# 
+    parMin = modelInfo[[modelTag[mod]]]$minBound
+    parMax = modelInfo[[modelTag[mod]]]$maxBound
+    
+    
+    if(length(which(parMin==parMax))==length(parMin)){# 
       progress(p("    Working on variable ",simVar[mod]),file)
       progress(p("    Parameters specified by user, no optimisation ..."),file)
       
       
       out[[simVar[mod]]]=switch_simulator(type=modelInfo[[modelTag[mod]]]$simVar,
-                                          parS=modelInfo[[modelTag[mod]]]$minBound,   #bounds become the pars
+                                          parS=parMin,   #bounds become the pars
                                           modelEnv = foreSIGHT_modelEnv,
                                           randomVector = randomVector,
+                                          randomUnitNormalVector = randomUnitNormalVector,
                                           wdSeries=wdStatus,
                                           resid_ts=NULL,
                                           seed=setSeed)
-
+      
+      parV=c(parV,parMin)
+      
     }else{
       progress(p("    Working on variable ",simVar[mod]),file)
       progress(p("    Commencing optimisation..."),file)
@@ -96,6 +108,10 @@ simulateTarget<-function(
         parSel=NULL      #no suggestions to be had
       }
       
+      # calculate attribute info prior to start of optimization so it does not need to be recalculated each call to target finder   
+      attInfo[[modelTag[mod]]]$attCalcInfo = attribute.calculator.setup(attSel=attSel[attInd[[mod]]],
+                                                                        datInd=datInd[[modelTag[mod]]])
+
       optTest=gaWrapper(gaArgs=optimArgs,          
                         modelEnv = foreSIGHT_modelEnv,      
                         modelInfo=modelInfo[[modelTag[mod]]],
@@ -104,6 +120,7 @@ simulateTarget<-function(
                         attInfo=attInfo[[modelTag[mod]]],
                         datInd=datInd[[modelTag[mod]]],
                         randomVector = randomVector,
+                        randomUnitNormalVector = randomUnitNormalVector,
                         parSuggest=parSel,
                         target=targetLoc[attInd[[mod]]],        
                         attObs=attObs[attInd[[mod]]],        
@@ -120,14 +137,21 @@ simulateTarget<-function(
                                           parS=optTest$par,
                                           modelEnv = foreSIGHT_modelEnv,
                                           randomVector = randomVector,
+                                          randomUnitNormalVector = randomUnitNormalVector,
                                           wdSeries=wdStatus,
                                           resid_ts=NULL,
                                           seed=optTest$seed)
+      out$ga_runtime=optTest$runtime
+      out$ga_fitness=optTest$fitness
+      out$ga_iter=optTest$opt@iter
+      out$ga_summary=optTest$opt@summary
+      
+      parV=c(parV,optTest$par)
       
     }
     
       #CALCULATE SELECTED ATTRIBUTE VALUES
-      sim.att=attribute.calculator(attSel=attSel[attInd[[mod]]],data=out[[simVar[mod]]]$sim,datInd=datInd[[modelTag[mod]]],attribute.funcs=attribute.funcs)
+      sim.att=attribute.calculator(attSel=attSel[attInd[[mod]]],data=out[[simVar[mod]]]$sim,datInd=datInd[[modelTag[mod]]])#,attribute.funcs=attribute.funcs)
       attSim[[mod]]=sim.att        #store simulated attributes in list
       
       #RELATING TO BASELINE SERIES 
@@ -157,7 +181,6 @@ simulateTarget<-function(
       #CONFIRMING SCORE FOR SIM SERIES
       progress(paste0("    Variable ",simVar[mod]," final sim series fitness: ",signif(score,4)),file)
       
-      parV=c(parV,optTest$par)
       objScore=c(objScore,score)
 
   }  #end model loop
@@ -171,6 +194,8 @@ simulateTarget<-function(
 
   out$parS=parV
   out$score=objScore
+
+  
   return(out)
 }
 

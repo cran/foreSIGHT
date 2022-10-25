@@ -16,9 +16,14 @@
 #' Produces time series of hydroclimatic variables for an exposure space. 
 #'
 #' \code{generateScenarios} produces time series of hydroclimatic variables using requested climate attributes that correspond to a target exposure space using a reference daily time series as an input.
-#' @param reference data.frame; contains reference daily climate data in a data frame with columns named \emph{year} \emph{month} \emph{day} \emph{*variable_name1*} \emph{*variable_name2*}. 
-#'            Use \code{viewModels()} to view the valid variable names. Note that the first three columns of the data.frame contain the year, month, and day of the reference. The columns have to be named as specified.
-#'            Please refer data provided with the package that may be loaded using \code{data(tankDat)} for an example of the expected format of \code{reference}.
+#' @param reference data.frame or list; contains reference daily climate data. \cr 
+#'            For single site data, \code{reference} is a data.frame with columns named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. 
+#'            Note that the first three columns of the data.frame contain the year, month, and day of the data. 
+#'            The columns have to be named as specified. 
+#'            For multi-site data, \code{reference} is a list, with elements named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. List format is suitable for both single and multi-site data. 
+#'            Climate variables are specified as matrices, with columns for each site. \cr   
+#'            Use \code{viewModels()} to view the valid variable names. 
+#'            Please refer to data provided with the package that may be loaded using \code{data(tankDat)} and \code{data(barossaDat)} for examples of the expected format of single site and multi-site \code{reference}.
 #' @param expSpace a list; created using the function \code{createExpSpace}
 #' @param simLengthNyrs a number; a scalar that specifies the length in years of each generated scenario. This argument is used only with stochastic generation.
 #' If \code{NULL} (the default), the generated simulation will be as long as \code{reference}.
@@ -29,7 +34,9 @@
 #' @param controlFile a string; to specify the model/optimisation options used for simulating time series data. The valid values are:
 #' \itemize{
 #' \item {\code{NULL}} {: the simulation uses the foreSIGHT default stochastic model settings.}
-#' \item {\code{"scaling"}} {: the simulation uses simple scaling instead of a stochastic model.}
+#' \item {\code{"scaling"}} {: the simulation uses scaling (simple/seasonal) instead of a stochastic model.
+#'                           If all attributes in \emph{expSpace} are annual totals/averages, then simple scaling is used.
+#'                           If seasonality ratio attributes are also included in \emph{expSpace}, then seasonal scaling is used.}
 #' \item {\code{path to a JSON file}} {: the JSON file contains advanced options specify the stochastic model and optimisation inputs. 
 #'                   These options can be used to change stochastic model types, overwrite default model parameter bounds, change default optimisation arguments, and set penalty attributes to be used in optimisation. 
 #'                   Please refer to the function \code{writeControlFile} in order to create an \code{controlFile} JSON file.
@@ -39,7 +46,41 @@
 #'         Each replicate can contain multiple targets (named as \code{Target1}, \code{Target2} etc.) based on the specified exposure space (\code{expSpace}). The \code{expSpace} and \code{controlFile} are also returned as part of this output list.
 #' @seealso \code{createExpSpace}, \code{writeControlFile}, \code{viewModels}
 #' @examples
-#' # Example 1: Stochastic simulation using foreSIGHT default settings
+#' # Example 1: Simple scaling
+#' #-----------------------------------------------------------------------
+#' attPerturb<-c("P_ann_tot_m","Temp_ann_avg_m")
+#' attPerturbType = "regGrid"
+#' attPerturbSamp = c(2, 2)
+#' attPerturbMin = c(0.8, -1)
+#' attPerturbMax = c(1.1, 1)
+#' expSpace <- createExpSpace(attPerturb = attPerturb,
+#'                            attPerturbSamp = attPerturbSamp, 
+#'                            attPerturbMin = attPerturbMin, 
+#'                            attPerturbMax = attPerturbMax, 
+#'                            attPerturbType = attPerturbType)
+#' data(tankDat)
+#' simScaling <- generateScenarios(reference = tank_obs,
+#'                                 expSpace = expSpace,
+#'                                 controlFile = "scaling")
+#'                                 
+#' # Example 2: Seasonal scaling
+#' #-----------------------------------------------------------------------
+#' attPerturb<-c("P_ann_tot_m","P_ann_seasRatio")
+#' attPerturbType = "regGrid"
+#' attPerturbSamp = c(2, 2)
+#' attPerturbMin = c(0.8, 0.9)
+#' attPerturbMax = c(1.1, 1.2)
+#' expSpace <- createExpSpace(attPerturb = attPerturb,
+#'                            attPerturbSamp = attPerturbSamp, 
+#'                            attPerturbMin = attPerturbMin, 
+#'                            attPerturbMax = attPerturbMax, 
+#'                            attPerturbType = attPerturbType)
+#' data(tankDat)
+#' seasScaling <- generateScenarios(reference = tank_obs,
+#'                                 expSpace = expSpace,
+#'                                 controlFile = "scaling")
+#'                                 
+#' # Example 3: Stochastic simulation using foreSIGHT default settings
 #' #----------------------------------------------------------------------
 #' \dontrun{
 #' # create an exposure space
@@ -64,23 +105,63 @@
 #'                                    expSpace = expSpace,
 #'                                    simLengthNyrs = 30)
 #'                                    }
-#' # Example 2: Simple scaling
+#' # Example 4: Simple Scaling with multi-site data 
 #' #-----------------------------------------------------------------------
-#' attPerturb<-c("P_ann_tot_m","Temp_ann_avg_m")
+#' attPerturb <- c("P_ann_tot_m","P_ann_seasRatio")
 #' attPerturbType = "regGrid"
-#' attPerturbSamp = c(2, 2)
-#' attPerturbMin = c(0.8, -1)
-#' attPerturbMax = c(1.1, 1)
+#' attPerturbSamp = c(3, 3)
+#' attPerturbMin = c(0.8, 1.2)
+#' attPerturbMax = c(0.8, 1.2)
 #' expSpace <- createExpSpace(attPerturb = attPerturb,
 #'                            attPerturbSamp = attPerturbSamp, 
 #'                            attPerturbMin = attPerturbMin, 
 #'                            attPerturbMax = attPerturbMax, 
 #'                            attPerturbType = attPerturbType)
-#' data(tankDat)
-#' simScaling <- generateScenarios(reference = tank_obs,
+#' # load multi-site rainfall data                        
+#' data(barossaDat)
+#' # perform simple scaling
+#' simScaling <- generateScenarios(reference = barossa_obs,
 #'                                 expSpace = expSpace,
 #'                                 controlFile = "scaling")
 #'                                 
+#' # Example 5: Multi-site stochastic simulation
+#' #-----------------------------------------------------------------------
+#' \dontrun{
+#' attPerturb <- c("P_ann_tot_m")
+#' attHold <- c("P_ann_wettest6monSeasRatio","P_ann_wettest6monPeakDay",
+#' "P_ann_P99","P_ann_avgWSD_m", "P_ann_nWetT0.999_m")
+#' attPerturbType = "regGrid"
+#' # consider unperturbed climates in this example
+#' attPerturbSamp = attPerturbMin = attPerturbMax = c(1) 
+#' expSpace <- createExpSpace(attPerturb = attPerturb, 
+#'                            attPerturbSamp = attPerturbSamp, 
+#'                            attPerturbMin = attPerturbMin, 
+#'                            attPerturbMax = attPerturbMax,
+#'                            attPerturbType = attPerturbType, 
+#'                            attHold = attHold)
+#' # load multi-site rainfall data                        
+#' data(barossaDat)
+#' # specify the penalty settings in a list
+#' controlFileList <- list()
+#' controlFileList[["penaltyAttributes"]] <- c("P_ann_tot_m",
+#' "P_ann_wettest6monSeasRatio","P_ann_wettest6monPeakDay")
+#' controlFileList[["penaltyWeights"]] <- c(0.5,0.5,0.5)
+#' # specify the alternate model selections
+#' controlFileList[["modelType"]] <- list()
+#' controlFileList[["modelType"]][["P"]] <- "latent"
+#' # specify model parameter selection
+#' controlFileList[["modelParameterVariation"]] <- list()
+#' controlFileList[["modelParameterVariation"]][["P"]] <- "harmonic"
+#' # specify settings for multi-site model
+#' controlFileList[["spatialOptions"]] <- list()
+#' # specify spatial correlation perturbation factor 
+#' controlFileList[["spatialOptions"]][["spatCorFac"]] = 0.9
+#' # write control file sttings to file
+#' controlFileJSON <- jsonlite::toJSON(controlFileList, pretty = TRUE, auto_unbox = TRUE)
+#' write(controlFileJSON, file = paste0(tempdir(), "controlFile.json"))
+#' # run multi-site stochastic simulation - this will take a long time (e.g. hours)
+#' sim <- generateScenarios(reference = barossa_obs, expSpace = expSpace,
+#'                          controlFile = paste0(tempdir(), "controlFile.json"),seed=1)}
 #' @export
 
 generateScenarios <- function(reference,                # data frame of observed data with column names compulsary [$year, $month, $day, $P,] additional [$Temp, $RH, $PET, $uz, $Rs] (or a subset of these)
@@ -104,7 +185,7 @@ generateScenarios <- function(reference,                # data frame of observed
   
   # Create random seedID
   if (is.null(seedID)) {
-    seedID <- round(runif(1)*10000)
+    seedID <- round(stats::runif(1)*10000)
   }
   
   # Create seedID vector for all replicates
@@ -187,7 +268,6 @@ checkObsVars <- function(obs, file) {
 # Anjana: pass "file" to readNamelist and modify checkNamelist functions to write errors into the file
 getUserModelChoices <- function(controlFile, obs, attSel, file = NULL) {
   
-  
   obsVars <- names(obs)[-which(names(obs) %in% c("year", "month", "day"))]
   attVars <- vapply(attSel,FUN = get.attribute.varType,FUN.VALUE=character(1),USE.NAMES = FALSE)
   
@@ -207,6 +287,7 @@ getUserModelChoices <- function(controlFile, obs, attSel, file = NULL) {
   modelInfoMod <- list()
   attPenalty <- NULL
   optimArgs <- list()
+  spatialArgs = list()
   
   if (is.null(controlFile)) {
     modelTag <- NULL
@@ -214,8 +295,16 @@ getUserModelChoices <- function(controlFile, obs, attSel, file = NULL) {
       modelTag <- c(modelTag, getModelTag(nml= NULL, v))
     }
   } else if (controlFile == "scaling") {
-      modelTag <- c("Simple-ann")
-  } else {
+      is.seas = grepl('seasRatio',attSel)
+      len.seas = length(which(is.seas))
+      if (len.seas==0){ 
+        modelTag = c('Simple-ann')
+      } else if (length(attSel)==2*len.seas){ 
+        modelTag = c('Simple-seas') 
+      } else { 
+        modelTag = c('Simple-ann','Simple-seas')
+      }
+    } else {
     
     # Read in user namelist
     # Some observations may have a user choice - others may be default
@@ -237,16 +326,45 @@ getUserModelChoices <- function(controlFile, obs, attSel, file = NULL) {
     modelInfoMod <- getModelInfoMod(nml)
     optimArgs <- getOptimArgs(nml)
     attPenalty <- getAttPenalty(nml)
+    spatialArgs = list(sites=nml$spatialOptions$sites,spatCorMatIn=nml$spatialOptions$spatCorMatIn,spatCorFac=nml$spatialOptions$spatCorFac)
   }
   
   return(list(modelTag = modelTag,
               modelInfoMod = modelInfoMod,
               optimArgs = optimArgs,
-              attPenalty = attPenalty))
+              attPenalty = attPenalty,
+              spatialArgs = spatialArgs))
   
 }
 
-
+# add extra model info for simple/seasonal scaling (modelinfo[[mod]]$simvar), and perform some extra checks
+# note: this could possibly be incorporated into get.multi.model.info or check_duplicates_mismatch but would significant changes to either function
+add_scaling_info = function(obs,attSel,modelInfo){
+   
+  obsVars <- names(obs)[-which(names(obs) %in% c("year", "month", "day"))]
+  attVars <- vapply(attSel,FUN = get.attribute.varType,FUN.VALUE=character(1),USE.NAMES = FALSE)
+  for (v in intersect(obsVars, attVars)) {
+    attSelVar = attSel[attVars==v]
+    tmp = unlist(strsplit(attSelVar,paste0(v,'_')))
+    suffix = tmp[tmp!='']
+    if (any(suffix%in%c('ann_tot_m','ann_avg_m'))){
+      if (length(attSelVar)==1){
+        modelInfo[["Simple-ann"]]$simVar = c(modelInfo[["Simple-ann"]]$simVar,v)
+      } else if ((length(attSelVar)==2)){
+        if (any(grepl('seasRatio',attSelVar))){
+          modelInfo[["Simple-seas"]]$simVar = c(modelInfo[["Simple-seas"]]$simVar,v)
+        }
+      } else {
+        stop("Scaling only works with 2 attributes (total/avg and seasRatio) for ",v)
+      }
+    } else {
+      stop("Require attribute with name '",v,"_ann_tot_m' or ",v,"_ann_avg_m' for scaling")
+    }
+  }
+    
+  return(modelInfo)
+}
+  
 #' Produces time series of hydroclimatic variables for an exposure target.
 #'
 #' \code{generateScenario} is the base function used by \code{generateScenarios}.
@@ -257,25 +375,26 @@ getUserModelChoices <- function(controlFile, obs, attSel, file = NULL) {
 #' \code{generateScenario} is intended to be used to adapt the functionality of \code{generateScenarios} for use in a parallel computing environment.
 #' @seealso \code{generateScenarios}
 #' @export
+#' @import GA
 
 generateScenario <- function(reference,       # data frame of observed data with column names compulsary [$year, $month, $day, $P,] additional [$Temp, $RH, $PET, $uz, $Rs] (or a subset of these)
                              expTarg,
                              simLengthNyrs = NULL,
                              seedID = NULL,
                              controlFile = NULL
-  ){
+){
   
   # renamed obs to reference (rename everywhere sometime)
   obs <- reference
   
   # Create random seedID
   if (is.null(seedID)) {
-    seedID <- round(runif(1)*10000)
+    seedID <- round(stats::runif(1)*10000)
   }
   set.seed(seedID)
   
   file <- paste0(tempdir(), "/generateScenario_log.txt")
-
+  
   # Checking
   #-------------------------------------------------------
   banner("CHECK FOR ARGUMENT INPUTS",file)
@@ -295,11 +414,11 @@ generateScenario <- function(reference,       # data frame of observed data with
   modelInfoMod <- userModelChoices$modelInfoMod
   optimArgs <- userModelChoices$optimArgs
   attPrim <- userModelChoices$attPenalty
-  
+  spatialArgs = userModelChoices$spatialArgs
   
   # Update optimArgs
   #------------------------------------------------------
-  optimArgs <- modifyList(optimArgsdefault, optimArgs)
+  optimArgs <- utils::modifyList(optimArgsdefault, optimArgs)
   
   
   # Identify target
@@ -311,7 +430,7 @@ generateScenario <- function(reference,       # data frame of observed data with
     }
   }
   targetMat <- expTarg$targetMat
-
+  
   check_duplicates_mismatch(obs=obs,
                             attSel=attSel,
                             attPrim=attPrim,
@@ -321,161 +440,539 @@ generateScenario <- function(reference,       # data frame of observed data with
                             optimArgs=optimArgs,
                             file=file)
   progress("Argument input format OK",file)
-
+  
   banner("CHECK FOR MODEL AND ATTRIBUTE COMBINATIONS",file)
   progress("Checking model and attribute combinations...",file)
-
+  
   check_models_attributes(names=names(obs),
-                         attSel=attSel,
-                         attPrim=attPrim,
-                         modelTag=modelTag,
-                         file=file)
-
+                          attSel=attSel,
+                          attPrim=attPrim,
+                          modelTag=modelTag,
+                          file=file)
+  
   progress("Model and attribute combinations OK",file)
-
+  
   #CHECK FOR INPUTS
   banner("CHECK FOR DATAFRAME INPUT",file)
   progress("Checking dataframe input...",file)
   inputcheck<-input_check(obs,file,simLengthNyrs)
   obs=inputcheck$data                                      # USE NEW APPENDED/CHECKED DATA
   progress("Dataframe input OK",file)
-
+  
   #GET ADDITIONAL MODEL INFO, ATT INFO & SORT (make into separate script/functions)
   nMod=length(modelTag)
   modelInfo=get.multi.model.info(modelTag=modelTag)
-
-    #UPDATE MODELINFO IF NEEDED
-    for(mod in 1:nMod){
-      if(!is.null(modelInfoMod[[modelTag[mod]]])){
-        #modifyList
-        if(mod==1) progress("Updating model info...",file)
-        defaultMods=list(minBound=NULL,maxBound=NULL,fixedPars=NULL)
-        modPars=modifyList(defaultMods,modelInfoMod[[modelTag[mod]]])
-        modelInfo[[modelTag[mod]]]=update.model.info(modelTag=modelTag[mod],
-                                                    modelInfo=modelInfo[[modelTag[mod]]],
-                                                    fixedPars=modPars$fixedPars,
-                                                    minUserBound=modPars$minBound,
-                                                    maxUserBound=modPars$maxBound,
-                                                    file=file)  #need to build in checks for this
-        # if(!is.na(modelInfo[[modelTag[mod]]]$fixedPars)
+  
+  # add extra model info for simple/seasonal scaling and perform some extra checks
+  if(modelTag[1]%in%c("Simple-ann","Simple-seas")){
+    modelInfo = add_scaling_info(obs=obs,attSel=attSel,modelInfo=modelInfo)
+  }
+  
+  #UPDATE MODELINFO IF NEEDED
+  for(mod in 1:nMod){
+    if(!is.null(modelInfoMod[[modelTag[mod]]])){
+      #modifyList
+      if(mod==1) progress("Updating model info...",file)
+      defaultMods=list(minBound=NULL,maxBound=NULL,fixedPars=NULL)
+      modPars=utils::modifyList(defaultMods,modelInfoMod[[modelTag[mod]]])
+      modelInfo[[modelTag[mod]]]=update.model.info(modelTag=modelTag[mod],
+                                                   modelInfo=modelInfo[[modelTag[mod]]],
+                                                   fixedPars=modPars$fixedPars,
+                                                   minUserBound=modPars$minBound,
+                                                   maxUserBound=modPars$maxBound,
+                                                   file=file)  #need to build in checks for this
+    }
+  }
+  
+  modelTag=update.simPriority(modelInfo=modelInfo)
+  simVar=sapply(X=modelInfo[modelTag],FUN=return.simVar,USE.NAMES=TRUE)       #?CREATE MODEL MASTER INFO - HIGHER LEVEL?
+  
+  attInfo=attribute.info.check(attSel=attSel,attPrim=attPrim, lambda.mult = optimArgs$lambda.mult)                                 # vector of selected attributes (strings)
+  if(modelTag[1]%in%c("Simple-ann","Simple-seas")){simVar=attInfo$varType}
+  attInd=get.att.ind(attInfo=attInfo,simVar=simVar)
+  attInfo=update.att.Info(attInfo=attInfo,attInd=attInd,modelTag=modelTag,simVar=simVar) #add extra level for easier model mangmt
+  if(!(modelTag[1]%in%c("Simple-ann","Simple-seas"))){
+    nParTot=0
+    for(i in 1:nMod){
+      nParTot=nParTot+modelInfo[[i]]$npars #total number of pars
+    }
+  }  
+  
+  #GET DATES DATA (and indexes for harmonic periods)
+  banner("INDEXING DATES",file)
+  progress("Indexing dates...",file)
+  dateExtnd=dateExtender(obs=obs,simLengthNyrs=simLengthNyrs,file=file,modelTag=modelTag)  #Extend dates if needed
+  datInd=mod.get.date.ind.extnd(obs=obs,dateExtnd=dateExtnd,modelTag=modelTag,modelInfo=modelInfo,simLengthNyrs=simLengthNyrs,file=file,southHemi=TRUE)
+  
+  progress("Dates indexed OK",file)
+  
+  # Adding AR1 parameter for P-har-wgen to ModelInfo (Anjana: moved to a separate fn from modelSequencer)
+  # Has to be after datInd since dates are used in the AR1 param calculation
+  modelInfo <- add_ar1Param(modelTag = modelTag, 
+                            modelInfo = modelInfo,
+                            datInd = datInd)
+  
+  #-------------------------------------
+  #SIMPLE/SEASONAL SCALING
+  if(modelTag[[1]]%in%c("Simple-ann","Simple-seas")){
+    sim = list()
+    for (mod in 1:nMod){
+      if (modelTag[mod]=='Simple-ann'){
+        # simple scaling
+        banner("SIMPLE SCALING FOR OBSERVED DATA",file)
+        progress("Simple scaling data...",file)
+        i_simple_ann = which(attInfo$varType %in% modelInfo[["Simple-ann"]]$simVar)
+        varSel = modelInfo[["Simple-ann"]]$simVar[i_simple_ann]
+        sim[varSel]=simple.scaling(target=unlist(targetMat)[i_simple_ann],
+                                   targetType=attInfo$targetType[i_simple_ann],
+                                   data=obs,
+                                   varType=attInfo$varType[i_simple_ann],
+                                   period=modelInfo[[modelTag[mod]]]$nperiod,
+                                   i.pp=datInd[[modelTag[mod]]]$i.pp)[varSel]
+        progress("Simple scaling OK",file)
+      } else if (modelTag[mod]=='Simple-seas'){
+        # seasonal scaling
+        banner("SEASONAL SCALING FOR OBSERVED DATA",file)
+        progress("Seasonal scaling data...",file)
+        for (v in modelInfo[["Simple-seas"]]$simVar){
+          i1 = which(names(targetMat)%in%paste0(v,c('_ann_tot_m','_ann_avg_m'))) # tot/avg attribute 
+          i2 = which(grepl(paste0(v,'_ann_seasRatio'),names(targetMat)))         # seasonality ratio attribute
+          attSeas = names(targetMat)[i2]
+          o = attribute.calculator.setup(attSeas,datInd[[modelTag[mod]]])
+          sim[[v]] = simple.scaling.seasonal(target_total_fac=unlist(targetMat)[i1],
+                                             target_seas_fac=unlist(targetMat)[i2],
+                                             data=obs,
+                                             varType=v,
+                                             i.T= datInd[[modelTag[mod]]]$i.pp[[1]],
+                                             i.S2 = o[[attSeas]]$attArgs$indexWet,
+                                             i.S1=o[[attSeas]]$attArgs$indexDry,
+                                             phi=o[[attSeas]]$attArgs$phi)[[v]]
+        }
+        progress("Seasonal scaling OK",file)
       }
     }
+    sim[["simDates"]] <- dateExtnd
+    progress("Data scaled OK",file)
     
-    modelTag=update.simPriority(modelInfo=modelInfo)
-    simVar=sapply(X=modelInfo[modelTag],FUN=return.simVar,USE.NAMES=TRUE)       #?CREATE MODEL MASTER INFO - HIGHER LEVEL?
+  }else{
     
-    attInfo=attribute.info.check(attSel=attSel,attPrim=attPrim, lambda.mult = optimArgs$lambda.mult)                                 # vector of selected attributes (strings)
-    if(modelTag[1] == "Simple-ann"){simVar=attInfo$varType}
-    attInd=get.att.ind(attInfo=attInfo,simVar=simVar)
-    attInfo=update.att.Info(attInfo=attInfo,attInd=attInd,modelTag=modelTag,simVar=simVar) #add extra level for easier model mangmt
-    if(modelTag[1] != "Simple-ann"){nParTot=0;for(i in 1:nMod){nParTot=nParTot+modelInfo[[i]]$npars}}                      #total number of pars
-
-    #GET DATES DATA (and indexes for harmonic periods)
-    banner("INDEXING DATES",file)
-    progress("Indexing dates...",file)
-    dateExtnd=dateExtender(obs=obs,simLengthNyrs=simLengthNyrs,file=file,modelTag=modelTag)  #Extend dates if needed
-    datInd=mod.get.date.ind.extnd(obs=obs,dateExtnd=dateExtnd,modelTag=modelTag,modelInfo=modelInfo,simLengthNyrs=simLengthNyrs,file=file,southHemi=TRUE)
-
-    progress("Dates indexed OK",file)
+    #STOCHASTIC SIMULATION
+    #---------------------------
     
-    # Adding AR1 parameter for P-har-wgen to ModelInfo (Anjana: moved to a separate fn from modelSequencer)
-    # Has to be after datInd since dates are used in the AR1 param calculation
-    modelInfo <- add_ar1Param(modelTag = modelTag, 
-                              modelInfo = modelInfo,
-                              datInd = datInd)
+    nsite = dim(obs[[simVar[1]]])[2] ## need to fix this up for nMod > 1 
     
-     #-------------------------------------
-     #SIMPLE SCALING
-     if(modelTag[[1]] == "Simple-ann"){
-           banner("SIMPLE SCALE FOR OBSERVED DATA",file)
-           progress("Scaling data...",file)
-           
-            sim=simple.scaling(target=unlist(targetMat),
-                                     targetType=attInfo$targetType,
-                                     data=obs[simVar],
-                                     varType=attInfo$varType,
-                                     period=modelInfo[[modelTag[1]]]$nperiod,
-                                     i.pp=datInd[[modelTag[1]]]$i.pp)
-            #sim[["nml"]] <- controlFile
-            sim[["simDates"]] <- dateExtnd
-           progress("Data scaled OK",file)
-
-     }else{
-
-          #STOCHASTIC SIMULATION
-          #---------------------------
-
-          #GET ATTRIBUTES OF OBSERVED DATA (testing attribute calc function)
-          banner("OBSERVED BASELINE ATTRIBUTE CALCULATION",file)
-          progress("Calculating attributes...",file)
-
-          attObs=list()                            #make this into its own function (also inserted into model sequencer)
-          for(i in 1:nMod){
-            attObs[[i]]=attribute.calculator(attSel=attSel[attInd[[i]]],
-                                             data=obs[[simVar[i]]],
-                                             datInd=datInd[["obs"]],
-                                             attribute.funcs=attribute.funcs)
-          }
-          attObs=unlist(attObs); attObs=attObs[attSel]   #unlist attObs and make sure order is correct
-
-          progress(paste("Attributes of observed series - ",paste(attSel,": ",signif(attObs,digits=5),collapse = ", ",sep=""),sep=""),file)
-          progress("Attributes calculated OK",file)   #NEED SOME ACTUAL CHECKING HERE BEFORE PRONOUNCING OK
-
-          #OPTIMISING TO DETERMINE PARS
-          #LOOP OVER EXPOSURE SPACE POINTS TO DETERMINE PARS
-          banner("DETERMINING STOCHASTIC MODEL PARAMETERS FOR TARGET",file)
-          progress("Determining stochastic model parameters at target location...",file)
-          progress("Simulating stochastic time series...",file)
-          progress("Starting cluster...",file)
-
-          #DETERMINE WHICH PARS ATTACH TO WHICH MODEL (make this a function in stochParManager.R)
-          parLoc=whichPars(simVar=simVar,modelInfo=modelInfo)
-
-          #SCREEN INAPPROPRIATE SUGGESTIONS IF ANY
-          if(!is.null(optimArgs$suggestions)){
-            optimArgs$suggestions=screenSuggest(suggest=optimArgs$suggestions,modelInfo=modelInfo,modelTag=modelTag,parLoc=parLoc)
-          }
-          
-            a<-Sys.time()
-
-            #IF "OAT" ROTATE attPrim
-            #attRot is returned only for "OAT" grids
-            if(!is.null(expTarg$attRot)) {
-              attApp <- expTarg$attRot
-            } else {
-              attApp <- attPrim
-            }
-            
-            sim=simulateTarget(optimArgs=optimArgs,         #sim[[i]]$P, $Temp $attSim $targetSim
-                                    simVar=simVar,
-                                    modelTag=modelTag,
-                                    modelInfo=modelInfo,
-                                    attSel=attSel,
-                                    attPrim=attApp,              #controlled via switch
-                                    attInfo=attInfo,
-                                    attInd=attInd,
-                                    datInd=datInd,
-                                    initCalibPars=NULL,
-                                    targetLoc=targetMat,     #is  a vector  (just 1 target here)
-                                    attObs=attObs,
-                                    parLoc=parLoc,
-                                    parSim=NULL,
-                                    # Anjana - do I need this?
-                                    setSeed=seedID,                   #seed based on loop counter
-                                    file=file)
-
-            b<-Sys.time()
-            runt <- b-a
-            logfile(signif(runt,digits=3),file)
-            nmlOut <- toNamelist(modelTag = modelTag, modelInfoMod = modelInfoMod, optimArgs = optimArgs, attPenalty = attPrim)
-            sim[["nml"]] <- nmlOut
-            sim[["simDates"]] <- dateExtnd
-          progress("Stochastic model parameters and time series obtained at target location ", file)
-
-     } #END STOCHASTIC SEGMENT
+    if (nsite==1){
+      
+      #GET ATTRIBUTES OF OBSERVED DATA (testing attribute calc function)
+      banner("OBSERVED BASELINE ATTRIBUTE CALCULATION",file)
+      progress("Calculating attributes...",file)
+      
+      attObs=list()                            #make this into its own function (also inserted into model sequencer)
+      for(i in 1:nMod){
+        attObs[[i]]=attribute.calculator(attSel=attSel[attInd[[i]]],
+                                         data=obs[[simVar[i]]],
+                                         datInd=datInd[["obs"]])#,
+        #                                             attribute.funcs=attribute.funcs)
+      }
+      attObs=unlist(attObs); attObs=attObs[attSel]   #unlist attObs and make sure order is correct
+      
+      progress(paste("Attributes of observed series - ",paste(attSel,": ",signif(attObs,digits=5),collapse = ", ",sep=""),sep=""),file)
+      progress("Attributes calculated OK",file)   #NEED SOME ACTUAL CHECKING HERE BEFORE PRONOUNCING OK
+      
+      #OPTIMISING TO DETERMINE PARS
+      #LOOP OVER EXPOSURE SPACE POINTS TO DETERMINE PARS
+      banner("DETERMINING STOCHASTIC MODEL PARAMETERS FOR TARGET",file)
+      progress("Determining stochastic model parameters at target location...",file)
+      progress("Simulating stochastic time series...",file)
+      progress("Starting cluster...",file)
+      
+      #DETERMINE WHICH PARS ATTACH TO WHICH MODEL (make this a function in stochParManager.R)
+      parLoc=whichPars(simVar=simVar,modelInfo=modelInfo)
+      
+      #SCREEN INAPPROPRIATE SUGGESTIONS IF ANY
+      if(!is.null(optimArgs$suggestions)){
+        optimArgs$suggestions=screenSuggest(suggest=optimArgs$suggestions,modelInfo=modelInfo,modelTag=modelTag,parLoc=parLoc)
+      }
+      
+      a<-Sys.time()
+      
+      #IF "OAT" ROTATE attPrim
+      #attRot is returned only for "OAT" grids
+      if(!is.null(expTarg$attRot)) {
+        attApp <- expTarg$attRot
+      } else {
+        attApp <- attPrim
+      }
+      
+      sim=simulateTarget(optimArgs=optimArgs,         #sim[[i]]$P, $Temp $attSim $targetSim
+                         simVar=simVar,
+                         modelTag=modelTag,
+                         modelInfo=modelInfo,
+                         attSel=attSel,
+                         attPrim=attApp,              #controlled via switch
+                         attInfo=attInfo,
+                         attInd=attInd,
+                         datInd=datInd,
+                         initCalibPars=NULL,
+                         targetLoc=targetMat,     #is  a vector  (just 1 target here)
+                         attObs=attObs,
+                         parLoc=parLoc,
+                         parSim=NULL,
+                         # Anjana - do I need this?
+                         setSeed=seedID,                   #seed based on loop counter
+                         file=file)
+      
+      b<-Sys.time()
+      runt <- b-a
+      logfile(signif(runt,digits=3),file)
+      nmlOut <- toNamelist(modelTag = modelTag, modelInfoMod = modelInfoMod, optimArgs = optimArgs, attPenalty = attPrim)
+      sim[["nml"]] <- nmlOut
+      sim[["simDates"]] <- dateExtnd
+      progress("Stochastic model parameters and time series obtained at target location ", file)
+      
+    } else {
+      
+      #OPTIMISING TO DETERMINE PARS
+      #LOOP OVER EXPOSURE SPACE POINTS TO DETERMINE PARS
+      banner("DETERMINING STOCHASTIC MODEL PARAMETERS FOR TARGET",file)
+      progress("Determining stochastic model parameters at target location...",file)
+      progress("Simulating stochastic time series...",file)
+      progress("Starting cluster...",file)
+      
+      #DETERMINE WHICH PARS ATTACH TO WHICH MODEL (make this a function in stochParManager.R)
+      parLoc=whichPars(simVar=simVar,modelInfo=modelInfo)
+      
+      #SCREEN INAPPROPRIATE SUGGESTIONS IF ANY
+      if(!is.null(optimArgs$suggestions)){
+        optimArgs$suggestions=screenSuggest(suggest=optimArgs$suggestions,modelInfo=modelInfo,modelTag=modelTag,parLoc=parLoc)
+      }
+      
+      a<-Sys.time()
+      
+      #IF "OAT" ROTATE attPrim
+      #attRot is returned only for "OAT" grids
+      if(!is.null(expTarg$attRot)) {
+        attApp <- expTarg$attRot
+      } else {
+        attApp <- attPrim
+      }
+  
+      # perform Stage 1 of multi-site simulation, where we calculate marginal parameters at each site, based on input spatial correlation matrix (spatialArgs$spatCorMatIn) 
+      sim1=simulateTargetMarg(optimArgs=optimArgs,         
+                              simVar=simVar,
+                              modelTag=modelTag,
+                              modelInfo=modelInfo,
+                              attSel=attSel,
+                              attPrim=attApp,              
+                              attInfo=attInfo,
+                              attInd=attInd,
+                              datInd=datInd,
+                              initCalibPars=NULL,
+                              targetLoc=targetMat,     
+                              parLoc=parLoc,
+                              parSim=NULL,
+                              setSeed=seedID,                   
+                              file=file,
+                              nMod=nMod,
+                              obs=obs,
+                              spatialArgs=spatialArgs)
     
+      # perform Stage 2 of multi-site simulation, using marginal parameters from Stage 1 and this time calculating spatial correlation matrix  
+      sim2 = simulateTargetCor(optimArgs=optimArgs,
+                               simIn=sim1,
+                               simVar=simVar,
+                               modelTag=modelTag,
+                               modelInfo=modelInfo,
+                               attSel=attSel,
+                               attPrim=attApp,              
+                               attInfo=attInfo,
+                               attInd=attInd,
+                               datInd=datInd,
+                               targetLoc=targetMat,     
+                               parLoc=parLoc,
+                               setSeed=seedID,                   
+                               file=file,
+                               nMod=nMod,
+                               obs=obs,
+                               spatialArgs=spatialArgs)
+
+      # perform Stage 3 of multi-site simulation, where we re-calculate marginal parameters at each site, based on spatial correlation matrix from Stage 2
+      spatialArgs3 = spatialArgs
+      spatialArgs3$spatCorMatIn = sim2$cor_par
+      sim3=simulateTargetMarg(optimArgs=optimArgs,         
+                              simVar=simVar,
+                              modelTag=modelTag,
+                              modelInfo=modelInfo,
+                              attSel=attSel,
+                              attPrim=attApp,              
+                              attInfo=attInfo,
+                              attInd=attInd,
+                              datInd=datInd,
+                              initCalibPars=NULL,
+                              targetLoc=targetMat,     
+                              parLoc=parLoc,
+                              parSim=NULL,
+                              setSeed=seedID,                   
+                              file=file,
+                              nMod=nMod,
+                              obs=obs,
+                              spatialArgs=spatialArgs3)
+      
+      sim = list()
+      sim$Stage1 = sim1
+      sim$Stage2 = sim2
+      sim$Stage3 = sim3
+      
+      b<-Sys.time()
+      runt <- b-a
+      logfile(signif(runt,digits=3),file)
+      nmlOut <- toNamelist(modelTag = modelTag, modelInfoMod = modelInfoMod, optimArgs = optimArgs, attPenalty = attPrim)
+      sim[["nml"]] <- nmlOut
+      sim[["simDates"]] <- dateExtnd
+      progress("Stochastic model parameters and time series obtained at target location ", file)
     
-    return(sim)
+    }
+    
+  } #END STOCHASTIC SEGMENT
+  
+  return(sim)
+}
+
+#----------------------------------------------------------------------------
+
+simulateTargetMarg = function(optimArgs=NULL,
+                              simVar=NULL,
+                              modelTag=NULL,
+                              modelInfo=NULL,
+                              attSel=NULL,
+                              attPrim=NULL,
+                              attInfo=NULL,
+                              attInd=NULL,
+                              datInd=NULL,
+                              initCalibPars=NULL,
+                              targetLoc=NULL, 
+                              parLoc=NULL,
+                              parSim=NULL,
+                              setSeed=NULL,
+                              file=NULL,
+                              nMod=NULL,
+                              obs=NULL,
+                              spatialArgs=NULL){
+
+  nday = datInd$obs$ndays
+  
+  ### DM NOTE: CODE CURRENTLY NOT PROPERLY SETUP TO WORK WITH MULTIPLE MODELS - PROB NEED TO ADD MODEL TO SIM LIST
+  sim = list(sites=NULL)
+  
+  for(i in 1:nMod){
+    nsite = dim(obs[[simVar[i]]])[2]
+    sites = colnames(obs[[simVar[i]]])
+    if (is.null(sites)){sites=paste0('site',seq(1,nsite))}
+    if ((nsite>1)&(nMod>1)){
+      stop('cannot have (nsite>1)&(nMod>1)')
+    }
+    
+    set.seed(setSeed)
+    if (nsite==1){
+      spatCorMatIn = NULL
+      MVTsampleMat = matrix(stats::rnorm(n=nday,mean=0.,sd=1.),ncol=1)
+    } else {
+      if (!is.null(spatialArgs$spatCorMatIn)){
+        spatCorMatIn = spatialArgs$spatCorMatIn
+      } else {
+        spatCorMatIn = diag(nsite)
+      }
+      MVTsampleMat = mvtnorm::rmvnorm(n=nday,sigma=spatCorMatIn)
+      colnames(MVTsampleMat) = sites      
+    }
+    
+    simMultiSite = list(sites=NULL,P=NULL)  ### NEED TO FIX THIS UP FOR VARIABLES OTHER THAN P
+    for (s in 1:nsite){
+      site = sites[s]
+      cat(site,'\n')
+      #GET ATTRIBUTES OF OBSERVED DATA (testing attribute calc function)
+      banner("OBSERVED BASELINE ATTRIBUTE CALCULATION",file)
+      progress("Calculating attributes...",file)
+      attObs=attribute.calculator(attSel=attSel[attInd[[i]]],
+                                     data=obs[[simVar[i]]][,s],
+                                     datInd=datInd[["obs"]])
+    
+      attObs=unlist(attObs); attObs=attObs[attSel]   #unlist attObs and make sure order is correct
+  
+      progress(paste("Attributes of observed series - ",paste(attSel,": ",signif(attObs,digits=5),collapse = ", ",sep=""),sep=""),file)
+      progress("Attributes calculated OK",file)   #NEED SOME ACTUAL CHECKING HERE BEFORE PRONOUNCING OK
+    
+      simMultiSite$sites[[site]] = simulateTarget(optimArgs=optimArgs,         
+                                         simVar=simVar,
+                                         modelTag=modelTag,
+                                         modelInfo=modelInfo,
+                                         attSel=attSel,
+                                         attPrim=attPrim,              
+                                         attInfo=attInfo,
+                                         attInd=attInd,
+                                         datInd=datInd,
+                                         initCalibPars=initCalibPars,
+                                         targetLoc=targetLoc,     
+                                         attObs=attObs,
+                                         parLoc=parLoc,
+                                         parSim=parSim,
+                                         setSeed=setSeed,                   
+                                         file=file,
+                                         randomUnitNormalVector=MVTsampleMat[,s])
+      
+      if (nsite>1){simMultiSite$P$sim = cbind(simMultiSite$P$sim,simMultiSite$sites[[site]]$P$sim)}
+      
+    }
+  }
+    
+  if (nsite>1){
+    sim = simMultiSite
+    sim$cor_par = spatCorMatIn
+  } else {
+    sim = simMultiSite$sites[[1]]
+  }
+  return(sim)
+  
+}
+
+#----------------------------------------------------------------------------
+
+simulateTargetCor = function(optimArgs=NULL,
+                             simIn=NULL,
+                             simVar=NULL,
+                             modelTag=NULL,
+                             modelInfo=NULL,
+                             attSel=NULL,
+                             attPrim=NULL,
+                             attInfo=NULL,
+                             attInd=NULL,
+                             datInd=NULL,
+                             targetLoc=NULL, 
+                             attObs=NULL,
+                             parLoc=NULL,
+                             setSeed=NULL,
+                             file=NULL,
+                             randomUnitNormalVector=NULL,  ### remove this 
+                             nMod=NULL,
+                             obs=NULL,
+                             spatialArgs=NULL){
+  
+  if (nMod>1){
+    stop('cannot have nMod>1')
+  } else {
+    mod = 1
+  } 
+  sites = names(simIn$sites) 
+  nsite=length(sites)
+  nday = datInd$obs$ndays
+  
+  modelInfoSites = list()
+  for (s in 1:nsite){
+    site = sites[s]
+    modelInfoSites[[site]] = modelInfo
+    modelInfoSites[[site]][[modelTag[mod]]]$minBound = modelInfoSites[[site]][[modelTag[mod]]]$maxBound = simIn$sites[[site]]$parS
+  }
+  
+  cor_par = matrix(nrow=nsite,ncol=nsite)
+  for (s1 in 1:(nsite-1)){
+    site1 = sites[s1]
+    cor_par[s1,s1] = 1
+    
+    for (s2 in (s1+1):nsite){
+      site2 = sites[s2]
+      cor_obs = stats::cor(obs$P[,c(s1,s2)])[1,2]
+      if (!is.null(spatialArgs$spatCorFac)){cor_obs=spatialArgs$spatCorFac*cor_obs}
+      
+      rho_1_2_list = seq(0.01,1,0.01)
+      cor_sim_list = c() 
+
+      corMat = matrix(nrow=2,ncol=2)
+      corMat[1,1] = corMat[2,2] = 1
+      
+      for (i in 1:length(rho_1_2_list)){
+        
+        corMat[1,2] = corMat[2,1] = rho_1_2_list[i]
+        
+        set.seed(setSeed)     
+        MVTsampleMat = mvtnorm::rmvnorm(n=nday,sigma=corMat)
+        
+        attObs1=attribute.calculator(attSel=attSel[attInd[[mod]]],
+                                    data=obs[[simVar[mod]]][,s1],
+                                    datInd=datInd[["obs"]])
+        attObs1=unlist(attObs1); attObs1=attObs1[attSel]   
+        sim1 = simulateTarget(optimArgs=optimArgs,         
+                              simVar=simVar,
+                              modelTag=modelTag,
+                              modelInfo=modelInfoSites[[site1]],
+                              attSel=attSel,
+                              attPrim=attPrim,              
+                              attInfo=attInfo,
+                              attInd=attInd,
+                              datInd=datInd,
+                              targetLoc=targetLoc,     
+                              attObs=attObs1,
+                              parLoc=parLoc,
+                              file=file,
+                              randomUnitNormalVector=MVTsampleMat[,1])
+        
+        attObs2=attribute.calculator(attSel=attSel[attInd[[mod]]],
+                                     data=obs[[simVar[mod]]][,s2],
+                                     datInd=datInd[["obs"]])
+        attObs2=unlist(attObs2); attObs2=attObs2[attSel]   
+        sim2 = simulateTarget(optimArgs=optimArgs,         
+                              simVar=simVar,
+                              modelTag=modelTag,
+                              modelInfo=modelInfoSites[[site2]],
+                              attSel=attSel,
+                              attPrim=attPrim,              
+                              attInfo=attInfo,
+                              attInd=attInd,
+                              datInd=datInd,
+                              targetLoc=targetLoc,     
+                              attObs=attObs2,
+                              parLoc=parLoc,
+                              file=file,
+                              randomUnitNormalVector=MVTsampleMat[,2])
+        
+        cor_sim_list[i] = stats::cor(sim1$P$sim,sim2$P$sim)
+
+      }
+      
+      diff = abs(cor_sim_list-cor_obs)
+      cor_par[s1,s2] = cor_par[s2,s1] = rho_1_2_list[which(diff==min(diff))]
+    }
+    cor_par[nsite,nsite] = 1
+    
+  }
+
+  sim = list(sites=NULL,P=NULL)
+  set.seed(setSeed)     
+  MVTsampleMat = mvtnorm::rmvnorm(n=nday,sigma=cor_par)
+  for (s in 1:nsite){
+    site = sites[s]
+    sim$sites[[site]] = simulateTarget(optimArgs=optimArgs,         
+                                 simVar=simVar,
+                                 modelTag=modelTag,
+                                 modelInfo=modelInfoSites[[site]],
+                                 attSel=attSel,
+                                 attPrim=attPrim,              
+                                 attInfo=attInfo,
+                                 attInd=attInd,
+                                 datInd=datInd,
+                                 targetLoc=targetLoc,     
+                                 attObs=attObs2,
+                                 parLoc=parLoc,
+                                 file=file,
+                                 randomUnitNormalVector=MVTsampleMat[,s])
+    
+    sim$P$sim = cbind(sim$P$sim,sim$sites[[site]]$P$sim)
+    
+  }
+  
+  sim$cor_par = cor_par
+  
+  return(sim)
+  
 }
 
 #----------------------------------------------------------------------------
@@ -809,7 +1306,7 @@ runSystemModel <- function(sim,                  # output from scenario generato
                            systemModel,          # system model function with arguments 
                            systemArgs,           # arguments of the system model
                            metrics               # names of performance metrics returned
-                           ){
+){
   
   # unpacking sim
   repNames <- names(sim[grep("Rep", names(sim))])
@@ -825,7 +1322,7 @@ runSystemModel <- function(sim,                  # output from scenario generato
   
   # assuming that the system model takes in climate data in a data.frame of the form
   # c(year, month, day, var1, var2)
-
+  
   performance <- vector("list", length = length(metrics))
   for (i in 1:length(metrics)) performance[[i]] <- matrix(NA, nrow = nTar, ncol = nRep) 
   
@@ -833,19 +1330,37 @@ runSystemModel <- function(sim,                  # output from scenario generato
     for (t in 1:nTar) {
       # initialising scenarioData
       scenarioData <- sim[["simDates"]]
+      varTemp <- list()
       for (v in varNames) {
         if ((is.character(sim[["controlFile"]]))) {
           if (sim[["controlFile"]] == "scaling") {
-            varTemp <- as.data.frame(sim[[repNames[r]]][[tarNames[t]]][[v]])
+            # using data.frame for single site & list for multi-site
+            max_nSites <- max(sapply(sim[[repNames[r]]][[tarNames[t]]], ncol))
+            if (max_nSites==1) {
+              varTemp <- as.data.frame(sim[[repNames[r]]][[tarNames[t]]][[v]])
+            } else{
+              varTemp[[v]] <- sim[[repNames[r]]][[tarNames[t]]][[v]]
+            }
           } else {
             stop(paste0("sim$controlFile unrecognized."))
           }
         } else {
-          varTemp <- as.data.frame(sim[[repNames[r]]][[tarNames[t]]][[v]][["sim"]])
+          # using data.frame for single site & list for multi-site
+          max_nSites <- max(sapply(sim[[repNames[r]]][[tarNames[t]]], function(x){ncol(x[["sim"]])}))
+          if (max_nSites==1) {
+            varTemp <- as.data.frame(sim[[repNames[r]]][[tarNames[t]]][[v]][["sim"]])
+          } else {
+            varTemp[[v]] <- sim[[repNames[r]]][[tarNames[t]]][[v]][["sim"]]
+          }
         }
-        names(varTemp) <- v
-        scenarioData <- cbind(scenarioData, varTemp)
-        rm(varTemp)
+        if (is.data.frame(varTemp)) {
+          names(varTemp) <- v
+          scenarioData <- cbind(scenarioData, varTemp)
+          rm(varTemp)
+        } else{
+          scenarioData <- varTemp
+        }
+        
       }
       # run the systemModel
       perfTemp <- systemModel(data = scenarioData, systemArgs = systemArgs, metrics = metrics)
@@ -856,7 +1371,7 @@ runSystemModel <- function(sim,                  # output from scenario generato
     }
   }
   names(performance) <- metrics
-
+  
   return(performance)
 }
 

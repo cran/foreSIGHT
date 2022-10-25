@@ -61,7 +61,7 @@ OATplot_fillAlpha <- 0.3
 OATplot_textSize <- 11
 
 heatPlot_textSize <- 12.5
-heatPlot_margins <- c(0.5, 0.5, 0.5, 0.5)
+heatPlot_margins <- c(t=0.5, r=0.8, l=0.5, b=0.5)  #expanded right margin
 
 theme_heatPlot <- function(textSize = heatPlot_textSize) {
   
@@ -81,8 +81,11 @@ theme_heatPlot <- function(textSize = heatPlot_textSize) {
   
   
   theme(legend.text = element_text(color = "black", size = textSize*0.9, face = "plain", margin = margin(r = 0.5, l = 0, unit = "cm")),
-        legend.position = "bottom", legend.justification = "center",
+        legend.position = "bottom", 
+        legend.justification = "center",
+       # legend.box="vertical",
         legend.title = element_text(color = "black", size = textSize*0.9, face = "plain", vjust = 1),
+       
         
         # applicable only to the colorbar, set it there
         # legend.key.width = unit(1.5, "cm"), legend.key.height = unit(0.3, "cm"),

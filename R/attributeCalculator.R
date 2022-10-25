@@ -3,23 +3,37 @@
 #' Calculates the attributes of the hydroclimate time series
 #'
 #' \code{calculateAttributes} calculates the specified attributes of the input daily hydroclimate time series.
-#' @param climateData data.frame; daily climate data, the attributes of which are to be calculated. \code{climateData} should be a data.frame with columns named \emph{year} \emph{month} \emph{day} \emph{*variable_name1*} \emph{*variable_name2*}. 
-#'            Use \code{viewModels()} to view the valid variable names. Note that the first three columns of the data.frame contain the year, month, and day of the data. The columns have to be named as specified.
-#'            Please refer data provided with the package that may be loaded using \code{data(tankDat)} for an example of the expected format of \code{climateData}.
+#' @param climateData data.frame or list; daily climate data, the attributes of which are to be calculated. \cr 
+#'            If \code{climateData} is a data.frame, it must have columns named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. 
+#'            Note that the first three columns of the data.frame contain the year, month, and day of the data. 
+#'            The columns have to be named as specified. 
+#'            Data.frame format is applicable for single site data only. \cr
+#'            If \code{climateData} is a list, it must have elements named \emph{year}, \emph{month}, \emph{day}, \emph{*variable_name1*}, \emph{*variable_name2*}. List format is suitable for both single and multi-site data. 
+#'            For multi-site data, climate variables are specified as matrices, with columns for each site. \cr   
+#'            Use \code{viewModels()} to view the valid variable names. 
+#'            Please refer to data provided with the package that may be loaded using \code{data(tankDat)} and \code{data(barossaDat)} for examples of the expected format of single site and multi-site \code{climateData}.
 #' @param attSel a vector; specifying the names of the attributes to be calculated.
 #' @param startYr a number (default \code{NULL}); to specify the starting year to subset \code{climateData} if required. 
 #' If \code{NULL}, \code{startYr} is starting year in the input \code{climateData}.
 #' @param endYr a number (default \code{NULL}); to specify the ending year to subset \code{climateData} if required. 
 #' If \code{NULL}, \code{endYr} is last year in the input \code{climateData}.
-#' @return The function returns a vector of length equal to the number of selected attributes (\code{attSel}), named using the names of the attributes.
-#' @seealso \code{viewAttributes}, \code{viewAttributeDef}
+#' @return The function returns a vector of attributes with names of the attributes (\code{attSel}). 
+#' For multi-site data, names are combinations of attribute and site names.
 #' @examples
-#' # view the names of available attributes
-#' viewAttributes()
-#' # load example climate data available in the package
+#' #----------------------------------------------------------------------
+#' # Example 1: Single-site data.frame input
+#' # load 'tank' example climate data available in the package
 #' data("tankDat")
+#' # specify rainfall and temperature attributes to calculate
 #' attSel <- c("P_ann_tot_m", "P_ann_nWet_m", "P_ann_R10_m", "Temp_ann_rng_m", "Temp_ann_avg_m")
 #' tank_obs_atts <- calculateAttributes(tank_obs, attSel = attSel)
+#' #----------------------------------------------------------------------
+#' # Example 2: Multi-site list input
+#' # load 'Barossa' example climate data available in the package
+#' data("barossaDat")
+#' # specify rainfall attributes to calculate
+#' attSel <- c("P_ann_tot_m", "P_ann_nWet_m", "P_ann_P99")
+#' barossa_obs_atts <- calculateAttributes(tank_obs, attSel = attSel)
 #' @export
 
 calculateAttributes<-function(climateData,                    # input data in the format of tank_obs (can be reference, obs, or, future projections)
@@ -46,12 +60,20 @@ calculateAttributes<-function(climateData,                    # input data in th
   }
   
   if(!is.null(endYr)) {
-    if (endYr > tail(obs$year,1)) warning("endYr is greater than the last year of climateData.")
+    if (endYr > utils::tail(obs$year,1)) warning("endYr is greater than the last year of climateData.")
   } else {
-    endYr <- tail(obs$year,1)
+    endYr <- utils::tail(obs$year,1)
   }
-  obs<-obs[which(obs$year>=startYr&obs$year<=endYr),]
-  
+
+  keep = which(obs$year>=startYr&obs$year<=endYr)
+  for (var in names(obs)){
+    if (is.null(dim(obs[[var]]))){
+      obs[[var]] = obs[[var]][keep]
+    } else {
+      obs[[var]][] = obs[[var]][keep,]
+    }  
+  }
+   
   # if(!is.null(slice)){                       #For non historical records     ***** old code using 'slice' and 'window'
   #   start=slice-window
   #   text<-paste("Note: Window is set ",window," years before slice",sep="")
@@ -83,13 +105,14 @@ calculateAttributes<-function(climateData,                    # input data in th
   for(i in 1:nvar){
     attObs[[i]]=attribute.calculator(attSel=attSel[attInd[[i]]],
                                      data=obs[[simVar[i]]],
-                                     datInd=datInd[["obs"]],
-                                     attribute.funcs=attribute.funcs) 
+                                     datInd=datInd[["obs"]]) 
   }
   
   #  progress("Attributes calculated OK",file)   #NEED SOME ACTUAL CHECKING HERE BEFORE PRONOUNCING OK
   attObs=unlist(attObs)
-  names(attObs)=attSel
+  if (length(attObs)==length(attSel)){
+    names(attObs)=attSel
+  }
   #  progress(attObs)
   
   return(attObs)

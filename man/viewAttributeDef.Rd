@@ -15,9 +15,7 @@ viewAttributeDef(attribute)
 \examples{
 # To view the definition of any valid attribute
 viewAttributeDef("P_ann_tot_m")
-# To view the valid attributes
-viewAttributes()
 }
 \seealso{
-\code{viewAttributes}, \code{createExpSpace}
+\code{createExpSpace}
 }

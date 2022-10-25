@@ -21,7 +21,7 @@ qqplot_masterList <- function() {
   )
   
   # CDF Functions: normal or extreme?
-  cdf_FUN_list <- list(qnorm, qnorm, qnorm, qnorm, qnorm, evd::qgumbel, evd::qgumbel)
+  cdf_FUN_list <- list(stats::qnorm, stats::qnorm, stats::qnorm, stats::qnorm, stats::qnorm, evd::qgumbel, evd::qgumbel)
   
   qqplot_labels <- list("Annual Total P",
                         "Annual Total PET",

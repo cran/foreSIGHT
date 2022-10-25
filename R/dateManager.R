@@ -21,9 +21,6 @@ dateExtender<-function(obs=NULL,
                        simLengthNyrs=NULL,
                        file=NULL,
                        modelTag=NULL
-                       # Anjana: Commented - removed multiple ways of extending dates for simplicity
-                       #datStart=NULL,
-                       #datFinish=NULL
                        ){
   #EXTEND DATES IF NEEDED
   if(!is.null(simLengthNyrs)){
@@ -31,19 +28,11 @@ dateExtender<-function(obs=NULL,
       dateExtnd=extendDates(simLengthNyrs=simLengthNyrs,dd=obs$day,mm=obs$month,yy=obs$year)
       progress("Extending dates",file)
     }else{
-      dateExtnd=obs[,c("year","month","day")]                                              # make the same as observed
+      dateExtnd=list(year=obs$year,month=obs$month,day=obs$day)                                              # make the same as observed
       progress("Length of time series cannot be increased using simple scaling",file)
     }
-  # }else if(!is.null(datStart)){
-  #   if(modelTag[[1]] != "Simple-ann"){
-  #     dateExtnd=makeDates(datStart=datStart,datFinish=datFinish)
-  #     progress("Extending dates",file)
-  #   }else{
-  #     dateExtnd=obs[,c("year","month","day")]                                              # make the same as observed
-  #     progress("Length of time series cannot be increased using simple scaling",file)
-  #   }
   } else {
-    dateExtnd=obs[,c("year","month","day")]                                               # make the same as observed
+    dateExtnd=list(year=obs$year,month=obs$month,day=obs$day)                                              # make the same as observed
   }
   return(dateExtnd)
 }
@@ -121,6 +110,7 @@ get.date.ind<-function(dd=NULL,
   nyr=yy[ndays]-yy[1]+1             # get number of years on record
   i.mm=get.month.ind(mm=mm)         #get indices for months
   i.yy=get.year.ind(yy=yy,nyr=nyr,n=ndays)  #get indices for years
+  i.5yy=get.nyear.ind(yy=yy,nyrEitherSide = 2)  #get indices for 5 year window
   if(southHemi==TRUE){
     i.ss=get.seas.ind(i.mm=i.mm)    #get indices for seasons
   }else{
@@ -145,8 +135,10 @@ get.date.ind<-function(dd=NULL,
               nyr=nyr,
               i.mm=i.mm,
               i.yy=i.yy,
+              i.5yy=i.5yy,
               i.ss=i.ss,
-              i.pp=i.pp)
+              i.pp=i.pp,
+              jj=jj)
   return(datInd)
 }
 
@@ -165,6 +157,16 @@ get.year.ind<-function(yy=NULL,   # ts vector of years
   i.yy=NULL
   for(Y in 1:nyr) i.yy[[Y]]=which(yy==years[Y])            # CREATE MONTHLY INDICES
   return(i.yy)
+}
+
+get.nyear.ind<-function(yy=NULL,   # ts vector of years
+                        nyrEitherSide = NULL
+){
+  years=seq(min(yy)+nyrEitherSide,max(yy)-nyrEitherSide)
+  nyr = length(years) 
+  i.yywin=NULL
+  for(Y in 1:nyr) i.yywin[[Y]]=which((yy>=years[Y]-nyrEitherSide)&(yy<=years[Y]+nyrEitherSide))            # CREATE MONTHLY INDICES
+  return(i.yywin)
 }
 
 get.seas.ind<-function(i.mm=NULL # list of days sorted by month

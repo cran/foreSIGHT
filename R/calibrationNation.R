@@ -15,6 +15,46 @@
 
 
 #------------------------------------------------
+#' modCalibrator
+#' 
+#' Calibrates weather generator models specified using modelTag.
+#' 
+#' modelTag provides the main function with requested models. modelTag is
+#' vector of any of the following supported models: \itemize{ \item
+#' \code{"Simple-ann"}a simple annual scaling \item \code{"P-ann-wgen"}a four
+#' parameter annual rainfall model \item \code{"P-seas-wgen"}a 16 parameter
+#' seasonal rainfall model \item \code{"P-har6-wgen"}a harmonic rainfall model
+#' with 6 periods \item \code{"P-har12-wgen"}a harmonic rainfall model \item
+#' \code{"P-har12-wgen-FS"}a harmonic rainfall model where seasonality is fixed
+#' (phase angles must be specified via
+#' modelInfoMod=list("P-har12-wgen-FS"=fixedPars=c(x,x,x,x)) \item
+#' \code{"P-har26-wgen"}a harmonic rainfall model \item \code{"P-2har26-wgen"}a
+#' double harmonic rainfall model \item \code{"Temp-har26-wgen"}a harmonic
+#' temperature model not conditional on rainfall \item
+#' \code{"Temp-har26-wgen-wd"}a harmonic temperature model dependent on wet or
+#' dry day \item \code{"Temp-har26-wgen-wdsd"}a harmonic temperature model
+#' where standard deviation parameters are dependent on wet or dry day \item
+#' \code{"PET-har12-wgen"}a harmonic potential evapotranspiration model \item
+#' \code{"PET-har26-wgen"}a harmonic potential evapotranspiration model \item
+#' \code{"PET-har26-wgen-wd"}a harmonic potential evapotranspiration model
+#' dependent on wet or dry day \item \code{"Radn-har26-wgen"}a harmonic solar
+#' radiation model (MJ/m2) }
+#' 
+#' @param obs A dataframe of observed climate data in the form \emph{Year Month
+#' Day P Temp}.
+#' @param modelTag A character vector of which stochastic models to use to
+#' create each climate variable. Supported tags are shown in under details
+#' below.
+#' @param window moving average window to calibrate daily gamma parameters for
+#' the modelTag \code{"P-har-WGEN"}.
+#' @keywords functions
+#' @examples
+#' 
+#' data(tankDat)                               #Load tank data (tank_obs)
+#' modelTag=c("P-ann-wgen","Temp-har26-wgen")  #Select a rainfall and a temperature generator
+#' out<- modCalibrator(obs = tank_obs,         #Calibrate models
+#'                     modelTag = modelTag)
+#' @export
 modCalibrator<-function(obs=NULL,
                         modelTag=NULL,
                         window=NULL     #sets moving average window to calibrate daily gamma parameters for "P-har-WGEN"
@@ -112,7 +152,7 @@ init.calib.Pwgen<- function(modelTag=NULL,  #model identifier
       for(j in 1:length(datInd$i.pp[[p]])){       #extend each index (one point each year) to include window days either side
         datarun<-seq(datInd$i.pp[[p]][j]-window,datInd$i.pp[[p]][j]+window)
         if(j==1){datarun<-datarun[datarun>0]} #in first and final years, trim data, as sometimes cannot grab from left or right, respectively
-        if(j==length(datInd$i.pp[[p]])){datarun<-datarun[datarun<=tail(datInd$i.pp[[modelInfo$nperiod]], n=1)]}
+        if(j==length(datInd$i.pp[[p]])){datarun<-datarun[datarun<=utils::tail(datInd$i.pp[[modelInfo$nperiod]], n=1)]}
         i.ww<-append(i.ww,datarun)
       }
       i.ww<-i.ww[-(1)]
@@ -273,7 +313,7 @@ init.calib.harTS<-function(modelTag=NULL,        #these are set to match the arg
       }
       
       # CALCULATE LAG-1 CORRELATION IN RESIDUALS
-      a=acf(genRes,na.action=na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
+      a=stats::acf(genRes,na.action=stats::na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
       r.res=a$acf[2]                         # STORE LAG-1 TEMPORAL AUTO-CORRELATION
       
       #COLLATE PARAMETER SET IN REQUIRED ORDER
@@ -350,7 +390,7 @@ init.calib.harTS<-function(modelTag=NULL,        #these are set to match the arg
                }
                
                # CALCULATE LAG-1 CORRELATION IN RESIDUALS
-               a=acf(genRes,na.action=na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
+               a=stats::acf(genRes,na.action=stats::na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
                r.res=a$acf[2]                         # STORE LAG-1 TEMPORAL AUTO-CORRELATION
                
                #COLLATE PARAMETER SET IN REQUIRED ORDER
@@ -378,7 +418,7 @@ init.calib.harTS<-function(modelTag=NULL,        #these are set to match the arg
                                                                  threshold=threshold)
                }
                # CALCULATE LAG-1 CORRELATION IN RESIDUALS
-               a=acf(genRes,na.action=na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
+               a=stats::acf(genRes,na.action=stats::na.pass,plot=F) # GET OBSERVED AT-SITE TEMPORAL AUTO-CORRELATION OF RESIDUALS
                r.res=a$acf[2]                         # STORE LAG-1 TEMPORAL AUTO-CORRELATION
                
                #COLLATE PARAMETER SET IN REQUIRED ORDER

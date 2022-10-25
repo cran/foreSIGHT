@@ -1,6 +1,6 @@
 ---
 title: "Quick Start Guide: Rainwater Tank Case Study"
-author: "Anjana Devanand, Sam Culley, Bree Bennett, Seth Westra"
+author: "Anjana Devanand, Sam Culley, Bree Bennett, David McInerney, Seth Westra"
 date: "`r format(Sys.time(), '%d %b %Y')`"
 output: 
   rmarkdown::html_vignette:
@@ -85,7 +85,7 @@ Several parts of the *fore*SIGHT workflow can involve significant computational 
 - It is not possible to hold some desired attributes at historical levels while perturbing others
 - The length of the generated time series cannot be longer than the supplied reference time series
 
-The implication of the above is that key modes of system vulnerability may be missed by adopting the 'simple scaling' approach The user should consider these points while using *fore*SIGHT for other case studies, with further description of the use of more sophisticated approaches for time series perturbation based on stochastic weather generators provided in the Detailed Tutorial.
+The implication of the above is that key modes of system vulnerability may be missed by adopting the 'simple scaling' approach. The user should consider these points while using *fore*SIGHT for other case studies, with further description of the use of more sophisticated approaches for time series perturbation, including 'seasonal scaling' and stochastic weather generators, provided in the Detailed Tutorial.
 
 
 ## 1.3. The rainwater tank system model
@@ -171,14 +171,11 @@ These are discussed in turn.
 
 **Sampling Strategy.** The function argument `attPerturbType` can be used to specify the type sampling of the exposure space. Please refer to function documentation using `?createExpSpace` to check the options available in the package. Two common sampling approaches are 'one-at-a-time' (OAT), and 'regGrid' sampling. In the case of a 'OAT' sampling, each attribute is perturbed one-at-a-time while holding all other attributes constant. In contrast, in a 'regGrid' sampling the attributes are perturbed simultaneously to create an exposure space encompassing all combination of perturbations in the selected attributes.
 
-The attributes available for use in *fore*SIGHT and their definitions can be viewed using the functions `viewAttributes()` and `viewAttributeDef()`
-
+Attributes in *foreSIGHT* are specified as combinations of variables names (e.g. "P" for precipitation), stratification type (e.g. "ann" for annual), function name (e.g. "tot" for total), and operation (e.g. "m" for mean over years). Please refer to the Detailed Tutorial for further details on attribute definitions.  
+The definitions of climate attributes supported by *fore*SIGHT can be viewed using the helper function `viewAttributeDef()` available in the package.
 ``` {r atts, R.options = list(width = 100)}
-viewAttributes()
-
 viewAttributeDef("P_ann_tot_m")
 ```
-
 
 The combinations of perturbed attributes specified by the user provide the intended sampling of the exposure space. The function `createExpSpace` can be used to create an exposure space by specifying `attPerturb` and relevant information regarding the sampling strategy for each attribute, as well as `attHold`. A typical usage of this function is shown below. Note that `attHold` is set to `NULL` since the method of 'simple scaling' will be used in Step B to generate perturbed time series, and this method does not have the capability to hold desired attributes at historical levels. The function `plotExpSpace` can be used to plot and check the range and sampling resolution of a created 2D exposure space.
 
@@ -238,7 +235,7 @@ expSpace2 <- createExpSpace(attPerturb = attPerturb,
 
 ## 2.2. Step B: Generate perturbed time series
 
-Having created the exposure space and the target locations, the next step is to created hydro-climate time series with these desired attribute values. The function `generateScenarios` can be used to generate perturbed time series corresponding to all the target locations in the exposure space. The function supports two types of techniques for perturbation, (1) simple scaling and (2) stochastic simulation, the details of which can be controlled by the user using the function argument `controlFile`. Simple scaling applies an additive or multiplicative change to the user-supplied observed time series to create perturbed time series, whereas stochastic simulation uses one of several available stochastic weather generators in combination with the inverse approach of Guo et al. (2018). 
+Having created the exposure space and the target locations, the next step is to created hydro-climate time series with these desired attribute values. The function `generateScenarios` can be used to generate perturbed time series corresponding to all the target locations in the exposure space. The function supports two types of techniques for perturbation, (1) simple/seasonal scaling and (2) stochastic simulation, the details of which can be controlled by the user using the function argument `controlFile`. Simple/seasonal scaling applies an additive or multiplicative change to the user-supplied observed time series to create perturbed time series, whereas stochastic simulation uses one of several available stochastic weather generators in combination with the inverse approach of Guo et al. (2018). 
 
 The capacity to generate tailored individual and joint changes to a variety of attributes, including annual averages, seasonality, variability, intermittency and extremes of a variety of hydroclimatic variables (e.g. rainfall, temperature, potential evapotranspiration, radiation) represents one of the core features of *fore*SIGHT, and requires the use of stochastic weather generation models as well as sophisticated calibration routines. Further information on application of stochastic models can be found in the Detailed Tutorial. Instead, this Quick Start Guide uses a technique called 'simple scaling' in which historical weather series are perturbed (or scaled) by a multiplicative or additive factor. This approach has significant limitations but is quick and easy to implement, and thus is used here for illustrative purposes. 
 

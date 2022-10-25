@@ -39,13 +39,9 @@
 #' \item \code{attRot} a char vector containing the one-at-a-time ("OAT") attributes associated with \code{targetMat}, \code{attRot} is \code{NULL} for other types of sampling.
 #' \item \code{attPerturb}, \code{attHold}, \code{attPerturbSamp}, \code{attPerturbMin}, \code{attPerturbMax}, \code{attPerturbType} in the  function input arguments, if not \code{NULL}.
 #' }
-#' @details The list of valid attributes that may be specified using \code{attPerturb} or \code{attHold} can be viewed using the function
-#' \code{viewAttributes()}. The definition of the attribute can be viewed using the function \code{viewAttributeDef}.
-#' @seealso \code{generateScenarios}, \code{viewAttributes}, \code{viewAttributeDef}
+#' @details See "Detailed Tutorial: Climate 'Stress-Testing' using *fore*SIGHT" vignette for specifying attribute names for \code{attPerturb} and \code{attHold}. The definition of the attribute can be viewed using the function \code{viewAttributeDef}.
+#' @seealso \code{generateScenarios}, \code{viewAttributeDef}
 #' @examples
-#' # To view the valid attributes. The function does not take any input arguments. 
-#' viewAttributes()
-#' 
 #' # To view the definition of any valid attribute
 #' viewAttributeDef("P_ann_tot_m")
 #' 
@@ -117,8 +113,8 @@ createExpSpace <- function(attPerturb,
                    attPerturbSamp = attPerturbSamp,
                    attPerturbBy = attPerturbBy,
                    attPerturbMin = attPerturbMin,
-                   attPerturbMax = attPerturbMax,
-                   attribute.funcs = attribute.funcs)
+                   attPerturbMax = attPerturbMax)#,
+#                   attribute.funcs = attribute.funcs)
   
   # convert "by" to "samp" since downstream code is set up to work with samp
   if (!is.null(attPerturbBy)) {
@@ -211,7 +207,7 @@ addExpArgs_attHold <- function(attPerturb = attPerturb, attHold = attHold, exSpA
                        bounds=tmp)
     
   # Combine user specified and defaults
-  exSpArgs=modifyList(exSpArgsdefault,exSpArgs)
+  exSpArgs=utils::modifyList(exSpArgsdefault,exSpArgs)
   exSpArgs$samp=c(exSpArgs$samp,rep(1,length(attHold)))
   
   return(exSpArgs)

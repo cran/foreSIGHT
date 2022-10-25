@@ -31,14 +31,14 @@ get.period.stats<-function(data=NULL,            #ts vector for data
      w.ind=i.hh[[h]][which(rain[i.hh[[h]]]>threshold)]
      #calculate mean, sd and cv for wet series
      out$wet$m[h]=mean(data[w.ind],na.rm=TRUE)
-     out$wet$sd[h]=sd(data[w.ind],na.rm=TRUE)
+     out$wet$sd[h]=stats::sd(data[w.ind],na.rm=TRUE)
      #out$wet$cv[h]=out$wet$sd[h]/out$wet$m[h]
      
      if(omit.drypars==FALSE){
        #calculate mean, sd and cv for dry series
        d.ind=i.hh[[h]][which(rain[i.hh[[h]]]<=threshold)]
        out$dry$m[h]=mean(data[d.ind],na.rm=TRUE)
-       out$dry$sd[h]=sd(data[d.ind],na.rm=TRUE)
+       out$dry$sd[h]=stats::sd(data[d.ind],na.rm=TRUE)
        #out$dry$cv[h]=out$dry$sd[h]/out$dry$m[h]
      }
        
@@ -47,7 +47,7 @@ get.period.stats<-function(data=NULL,            #ts vector for data
     out$all$m=rep(NA,nperiod);out$all$sd=rep(NA,nperiod);out$all$cv=rep(NA,nperiod)
     for(h in 1:nperiod){
       out$all$m[h]=mean(data[i.hh[[h]]],na.rm=TRUE)
-      out$all$sd[h]=sd(data[i.hh[[h]]],na.rm=TRUE)
+      out$all$sd[h]=stats::sd(data[i.hh[[h]]],na.rm=TRUE)
       #out$all$cv[h]=out$all$sd[h]/out$all$m[h]
     }
   }

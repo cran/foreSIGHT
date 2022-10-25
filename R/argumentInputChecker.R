@@ -23,11 +23,7 @@ check_attributes <- function(attHold = NULL,
                              attPerturbSamp = NULL,
                              attPerturbBy = NULL,
                              attPerturbMin = NULL,
-                             attPerturbMax = NULL,
-                             attribute.funcs = NULL
-) {
-  
-  attributelist <- names(attribute.funcs)
+                             attPerturbMax = NULL) {
 
   # 1. Checks on the names of attributes specified
   #------------------------------------------------------------------
@@ -44,19 +40,20 @@ check_attributes <- function(attHold = NULL,
     stop("There are multiple entries of the same attribute")
   }
   
-  if(!is.null(attHold)){
-    for (i in 1:length(attHold)){
-      if(sum(attHold[i] %in% attributelist)==0){
-        stop(paste0("attHold [",i,"] unrecognised"))
-      }
-    }
-  }
-  
-  for (i in 1:length(attPerturb)){
-    if(sum(attPerturb[i] %in% attributelist)==0){
-      stop(paste0("attPerturb [",i,"] unrecognised"))
-    }
-  }
+  # DM note: I believe these are now checked in attribute.calculator.setup().   
+  # if(!is.null(attHold)){
+  #   for (i in 1:length(attHold)){
+  #     if(sum(attHold[i] %in% attributelist)==0){
+  #       stop(paste0("attHold [",i,"] unrecognised"))
+  #     }
+  #   }
+  # }
+  # 
+  # for (i in 1:length(attPerturb)){
+  #   if(sum(attPerturb[i] %in% attributelist)==0){
+  #     stop(paste0("attPerturb [",i,"] unrecognised"))
+  #   }
+  # }
   
   # 2. Checks on arguments used for creating the sample space
   #------------------------------------------------------------------
@@ -66,7 +63,7 @@ check_attributes <- function(attHold = NULL,
   
   if(is.character(attTargetsFile)) {
     # READING FROM FILE
-    targetMat <- read.table(file = attTargetsFile, sep = ",", header = TRUE)
+    targetMat <- utils::read.table(file = attTargetsFile, sep = ",", header = TRUE)
     att_frmFile <- names(targetMat)
 
     for (i in 1:length(att_frmFile)) {
@@ -150,25 +147,26 @@ check_duplicates_mismatch<-function(obs=NULL,
   # }
   
   # Simple scaling : no attHeld, no attPrim, single perturbed attribute per variable
-  if (modelTag[1]=="Simple-ann") {
+  if (modelTag[1]%in%c("Simple-ann","Simple-seas")) {
     
     if(length(attHold)!=0) {
-      logfile("Error: Invalid - Simple scaling cannot hold attributes constant",file)
+      logfile("Error: Invalid - Scaling cannot hold attributes constant",file)
       logfile("Program terminated",file)
-      stop("Simple scaling cannot hold attributes constant")
+      stop("Scaling cannot hold attributes constant")
     }
     
     if(length(attPrim)!=0) {
-      logfile("Error: Simple scaling uses no primary attributes",file)
+      logfile("Error: Scaling uses no primary attributes",file)
       logfile("Program terminated",file)
-      stop("Simple scaling uses no primary attributes")
+      stop("Scaling uses no primary attributes")
     }
-    
-    if(length(attPerturb)!=length(names)){
-      logfile("Error: There is a mismatch between number of variables and number of attributes. These should be the same for simple scaling, which only has multiplicative or additive changes",file)
-      logfile("Program terminated",file)
-      stop("There is a mismatch between number of variables and number of attributes. These should be the same for simple scaling, which only has multiplicative or additive changes")
-    }
+
+    # DM: I believe this is now handled in add_scaling_info()    
+    # if(length(attPerturb)!=length(names)){
+    #   logfile("Error: There is a mismatch between number of variables and number of attributes. These should be the same for simple scaling, which only has multiplicative or additive changes",file)
+    #   logfile("Program terminated",file)
+    #   stop("There is a mismatch between number of variables and number of attributes. These should be the same for simple scaling, which only has multiplicative or additive changes")
+    # }
   
     
   # Checks for stochastic models  
@@ -345,29 +343,33 @@ check_models_attributes<-function(names=NULL,
     
   }
   
-  if (modelTag[1]=="Simple-ann") {
+#  if (modelTag[1]=="Simple-ann") {
     
-    validAtts <- get.attribute.info(modelTag = "Simple-ann")
-    if(sum(attSel %in% validAtts)!=length(attSel)) {
-      logfile("Error: Simple scaling cannot perturb selected attributes",file)
-      logfile("Program terminated",file)
-      stop("Simple scaling cannot perturb selected attributes. Choose a stochastic model")
-    }
+    # DM: this is now checked in control.R
+    # validAtts <- get.attribute.info(modelTag = "Simple-ann")
+    # if(sum(attSel %in% validAtts)!=length(attSel)) {
+    #   logfile("Error: Simple scaling cannot perturb selected attributes",file)
+    #   logfile("Program terminated",file)
+    #   stop("Simple scaling cannot perturb selected attributes. Choose a stochastic model")
+    # }
     
-  } else {
-    
-    validAtts=("temp")
-    for(i in 1:length(modelVars)) {
-      temp=get.attribute.info(modelTag=modelTag[i])
-      validAtts=append(validAtts,temp)
-    }
-    validAtts=validAtts[-1]
-    
-    if(sum(attSel %in% validAtts)!=length(attSel)) {
-      logfile("Error: Model combinations cannot perturb selected attributes",file)
-      logfile("Program terminated",file)
-      stop("Model combinations cannot perturb or hold selected attributes. Change attPerturb or attHold selection.")
-    }
+#  } else {
+ 
+  if (!(modelTag[1])%in%c('Simple-ann','Simple-seas')){
+     
+    # ##### DM: this is now handled in attribute.calculator.setup()  
+    # validAtts=("temp")
+    # for(i in 1:length(modelVars)) {
+    #   temp=get.attribute.info(modelTag=modelTag[i])
+    #   validAtts=append(validAtts,temp)
+    # }
+    # validAtts=validAtts[-1]
+    # 
+    # if(sum(attSel %in% validAtts)!=length(attSel)) {
+    #   logfile("Error: Model combinations cannot perturb selected attributes",file)
+    #   logfile("Program terminated",file)
+    #   stop("Model combinations cannot perturb or hold selected attributes. Change attPerturb or attHold selection.")
+    # }
     
     progress("You have selected the following penalty attributes:",file)
     # cat("     ")

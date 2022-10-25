@@ -1,3 +1,11 @@
+foreSIGHT 1.1.1
+----------------------------------------------------------------
+- Redesigned attribute manager
+-	Added seasonal scaling
+-	Added capability for multi-site perturbed climates
+-	Added inverse approach for multi-site stochastic rainfall model 
+
+
 foreSIGHT 1.0.0
 ----------------------------------------------------------------
 - Major revision

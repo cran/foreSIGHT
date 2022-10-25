@@ -46,7 +46,7 @@ plotExpSpace <- function(expSpace,
   
   xUnits <- getVarUnits(strsplit(x, "_")[[1]][1])
   yUnits <- getVarUnits(strsplit(y, "_")[[1]][1])
-  xyFullNames <- mapply(tagBlender_noUnits, c(x,y))
+  xyFullNames <- mapply(tagBlender, c(x,y))
   y.lab <- paste0(xyFullNames[2], " (", yUnits, ")")
   x.lab <- paste0(xyFullNames[1], " (", xUnits, ")")
   

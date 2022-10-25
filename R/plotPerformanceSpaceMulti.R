@@ -23,6 +23,7 @@
 #' Please refer data provided with the package that may be loaded using \code{data("egClimData")} for an example of the expected format of \code{climData}.
 #' @param col a vector of colours; The length of the vector should atleast be sufficient to assign unique colours to all
 #' the different values in the generated plot. If \code{NULL}, the default foreSIGHT colours is used.
+#' @param axesPercentLabel a logical flag; if TRUE x and y axes to be displayed in terms of percentage change instead of fraction
 #' @details If the space contains more than two perturbed attributes, the performance values are averaged across the perturbations in the attributes other than \code{attX} and \code{attY}.
 #' The user may specify argument \code{attSlices} to slice the performance space at specific values of the other perturbed attributes. If \code{attSlices} are used to 
 #' specify minimum-maximum values to subset other perturbed attributes, the performance values are averaged across the subsetted perturbations in these attributes. This function
@@ -35,19 +36,30 @@
 #' data("egSimSummary")
 #' data("egClimData")
 #' 
-#' plotPerformanceSpaceMulti(egSimPerformance, egSimSummary, 
+#' plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
 #' perfThreshMin = c(NA, 0.80), perfThreshMax = c(30, NA))
 #' 
+#' #replot with axes as percentage changes
+#' plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
+#' perfThreshMin = c(NA, 0.80), perfThreshMax = c(30, NA),axesPercentLabel=TRUE)
+#' 
 #' # add alternate climate data and specify different colours for the plot
-#' plotPerformanceSpaceMulti(egSimPerformance, egSimSummary, perfThreshMin = c(NA, 0.80), 
-#' perfThreshMax = c(30, NA), climData = egClimData, col = viridisLite::magma(3))
+#' plotPerformanceSpaceMulti(performance=egSimPerformance, sim=egSimSummary, 
+#'                           perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+#'                           climData = egClimData, col = viridisLite::magma(3))
 #' 
 #' # example using simple scaled simulations
 #' data("egScalPerformance")
 #' data("egScalSummary")
 #' data("egClimData")
-#' plotPerformanceSpaceMulti(egScalPerformance, egScalSummary, perfThreshMin = c(NA, 0.80), 
-#' perfThreshMax = c(30, NA), climData = egClimData)
+#' plotPerformanceSpaceMulti(performance=egScalPerformance, sim=egScalSummary, 
+#'                           perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+#'                           climData = egClimData)
+#' 
+#' # replot with axes as percentage changes (Note: modifies fractional change attributes only)
+#' plotPerformanceSpaceMulti(performance=egScalPerformance, sim=egScalSummary, 
+#'                           perfThreshMin = c(NA, 0.80),perfThreshMax = c(30, NA), 
+#'                           climData = egClimData,axesPercentLabel=TRUE)
 #' @export
 
 plotPerformanceSpaceMulti <- function(performance,      # system model performance, list containing matrices of different performance metrics size targets x replicates 
@@ -59,7 +71,8 @@ plotPerformanceSpaceMulti <- function(performance,      # system model performan
                           attSlices = NULL,         # list containing the slices of attributes to use for plotting
                           topReps = NULL,           # number of topReps based on fitness (i.e., the objective function score which is -ve)
                           climData = NULL,          # data.frame containing alternate climate data
-                          col = NULL                # vector of colours
+                          col = NULL,               # vector of colours
+                          axesPercentLabel=FALSE    # if false, natural units used (if true fractions converted to %)
 ) {
   
   # checks specific to this function
@@ -156,7 +169,7 @@ plotPerformanceSpaceMulti <- function(performance,      # system model performan
     # averaging the performance across these multiple targets before checking threshold exceedence
     tempMat <- cbind(targetMat[colAttX], targetMat[colAttY], performanceAv) 
     names(tempMat) <- c("x", "y", "z")
-    performanceAvAgg <- aggregate(.~x+y, tempMat, mean)
+    performanceAvAgg <- stats::aggregate(.~x+y, tempMat, mean)
     names(performanceAvAgg) <- c(attX, attY, "Performance")
     #-------
     
@@ -181,7 +194,7 @@ plotPerformanceSpaceMulti <- function(performance,      # system model performan
   #                             attX,    attY, 
   threshPlotData <- cbind(performanceAvAgg[ ,1:2], perfThreshComb)
   
-  p <- fillHeatPlot(threshPlotData, colMap = col, climData = climData)
+  p <- fillHeatPlot(threshPlotData, colMap = col, climData = climData,axesPercentLabel=axesPercentLabel)
   # plotThreshContour(threshPlotData, nx, ny)
   # return(threshPlotData)
   return(p)
@@ -191,7 +204,7 @@ plotPerformanceSpaceMulti <- function(performance,      # system model performan
 plotThreshContour <- function(plotData, nx, ny){
   
   xyAtts <- colnames(plotData)[1:2]
-  xyAttDefs <- mapply(tagBlender_noUnits, xyAtts, USE.NAMES = FALSE)
+  xyAttDefs <- mapply(tagBlender, xyAtts, USE.NAMES = FALSE)
   
   varNames <- sapply(strsplit(xyAtts, "_"), `[[`, 1)
   varUnits <- getVarUnits(varNames)
@@ -200,16 +213,16 @@ plotThreshContour <- function(plotData, nx, ny){
   # max no. of thresholds
   nTh <-  max(plotData[,3])
   
-  par(mar=c(5.5,3.8,1,1),oma=c(1,0.3,0.3,0.3), mgp = c(0,0.5,0))
+  graphics::par(mar=c(5.5,3.8,1,1),oma=c(1,0.3,0.3,0.3), mgp = c(0,0.5,0))
   #plot(NA,NA,xlim = c(min(plotData[ ,1]), max(plotData[ ,1])), ylim = c(min(plotData[ ,2]), max(plotData[ ,2])),xaxs="i",yaxs='i',ylab="",xlab="")
   fields::quilt.plot(x = plotData[ ,1], y = plotData[ ,2], z = plotData[ ,3], nx = nx ,ny = ny,
                      add.legend = FALSE, nlevel = perfSpace_nlevel, col = foreSIGHT.colmap(perfSpace_nlevel), 
                      xlim = c(min(plotData[ ,1]), max(plotData[ ,1])), ylim = c(min(plotData[ ,2]), max(plotData[ ,2])),
                      zlim = c(0, nTh), xlab = "", ylab ="")
-  box(col = "black")
+  graphics::box(col = "black")
   
-  mtext(side=1,text=xyLabels[1],line=1.8)
-  mtext(side=2,text=xyLabels[2],line=1.8)
+  graphics::mtext(side=1,text=xyLabels[1],line=1.8)
+  graphics::mtext(side=2,text=xyLabels[2],line=1.8)
   
   
   #get image for contours
@@ -217,7 +230,7 @@ plotThreshContour <- function(plotData, nx, ny){
   #filled.contour(x = look$x, y = look$y, z = look$z, zlim = c(0, nTh), levels = c(0:nTh+1), col = foreSIGHT.colmap(nTh))
   
   #               method="edge", labcex = 1, nlevels = perfSpace_ncontour)
-  contour(add = TRUE, x = look$x, y = look$y, z = look$z, method="edge", labcex = 1, levels = c(0:nTh+1), lwd=2)
+  graphics::contour(add = TRUE, x = look$x, y = look$y, z = look$z, method="edge", labcex = 1, levels = c(0:nTh+1), lwd=2)
   #contour(add = TRUE, x = look$x, y = look$y, z = look$z, nlevels = perfSpace_ncontour)
   # points(x=climAtts$P_ann_seasRatio_m[1:climLim],y=climAtts$P_ann_tot_m[1:climLim],pch=".",cex=2.0)
   
@@ -234,21 +247,24 @@ plotThreshContour <- function(plotData, nx, ny){
   # }
   # legend at base
   #par(xpd=TRUE)
-  legend("bottom",xpd = TRUE, inset = c(0, -0.25), legend=seq(0,nTh),bty="n",horiz = TRUE,
+  graphics::legend("bottom",xpd = TRUE, inset = c(0, -0.25), legend=seq(0,nTh),bty="n",horiz = TRUE,
          fill = foreSIGHT.colmap(nTh+1), title = "No. of thresholds exceeded")
   #        #fill=c(makeTransparent(asc.col[1], alpha=40),makeTransparent(asc.col[nlevel], alpha=100),makeTransparent(asc.col[nlevel], alpha=200)))
   #mtext(side=1,text="No. of thresholds exceeded",adj=1.0, line=4,at=1.04)
   
-  mtext(tag_text, side=1, line=0, adj=1.0, cex=0.8, col=tag_textCol, outer=TRUE)
+  graphics::mtext(tag_text, side=1, line=0, adj=1.0, cex=0.8, col=tag_textCol, outer=TRUE)
   
 }
 
 
 # plotting code for a filled contour plot similar to heatPlot
-fillHeatPlot <- function(plotData, colMap = NULL, climData = NULL) {
+fillHeatPlot <- function(plotData, 
+                         colMap = NULL, 
+                         climData = NULL,
+                         axesPercentLabel=FALSE) {
   
   xyAtts <- colnames(plotData)[1:2]
-  xyAttDefs <- mapply(tagBlender_noUnits, xyAtts, USE.NAMES = FALSE)
+  xyAttDefs <- mapply(tagBlender, xyAtts, USE.NAMES = FALSE)
   
   varNames <- sapply(strsplit(xyAtts, "_"), `[[`, 1)
   varUnits <- getVarUnits(varNames)
@@ -263,15 +279,56 @@ fillHeatPlot <- function(plotData, colMap = NULL, climData = NULL) {
   
   threshPlot_alpha <- 0.7
   
-  p1 <- ggplot(data = plotData, aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]])) +
-    stat_contour_filled(aes(z = .data$perfThreshComb), breaks = breaks) + #, alpha = perfSpace_alpha) +
-    # to add outlines
-    stat_contour(aes(z = .data$perfThreshComb), breaks = breaks, colour = "black") +
-    labs(x = xyLabels[1], y = xyLabels[2]) +
-    scale_x_continuous(expand=c(0, 0)) +    # no extra space on x and y axes
-    scale_y_continuous(expand=c(0, 0)) +
-    coord_cartesian(xlim=xlimits, ylim=ylimits) + 
-    theme_heatPlot()
+  #Modify axes that currently display as "fraction" to display in terms of "%"
+  if(axesPercentLabel==TRUE){
+    # modify if attribute is a fraction
+    tempInd=which(varUnits=="fraction")
+    varUnits[tempInd]="%"  #change label to %
+    xyLabels <- paste0(xyAttDefs, " (", varUnits, ")")  #update xyLabels
+    # modify depending on whether x, y or both
+    if(length(tempInd)==2){  #if both x- & y-axis
+      p1 <- ggplot(data = plotData, aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]])) +
+        stat_contour_filled(aes(z = .data$perfThreshComb), breaks = breaks) + #, alpha = perfSpace_alpha) +
+        # to add outlines
+        stat_contour(aes(z = .data$perfThreshComb), breaks = breaks, colour = "black") +
+        labs(x = xyLabels[1], y = xyLabels[2]) +
+        scale_x_continuous(expand=c(0, 0),labels=scales::percent_format(accuracy =0.1)) +    # no extra space on x and y axes
+        scale_y_continuous(expand=c(0, 0),labels=scales::percent_format(accuracy =0.1)) +
+        coord_cartesian(xlim=xlimits, ylim=ylimits) + 
+        theme_heatPlot()
+      }else if(tempInd[1]==1){ #if only x-axis
+        p1 <- ggplot(data = plotData, aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]])) +
+          stat_contour_filled(aes(z = .data$perfThreshComb), breaks = breaks) + #, alpha = perfSpace_alpha) +
+          # to add outlines
+          stat_contour(aes(z = .data$perfThreshComb), breaks = breaks, colour = "black") +
+          labs(x = xyLabels[1], y = xyLabels[2]) +
+          scale_x_continuous(expand=c(0, 0),labels=scales::percent_format(accuracy =0.1)) +    # no extra space on x and y axes
+          scale_y_continuous(expand=c(0, 0)) +
+          coord_cartesian(xlim=xlimits, ylim=ylimits) + 
+          theme_heatPlot()
+      }else{ # if only y-axis
+        p1 <- ggplot(data = plotData, aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]])) +
+          stat_contour_filled(aes(z = .data$perfThreshComb), breaks = breaks) + #, alpha = perfSpace_alpha) +
+          # to add outlines
+          stat_contour(aes(z = .data$perfThreshComb), breaks = breaks, colour = "black") +
+          labs(x = xyLabels[1], y = xyLabels[2]) +
+          scale_x_continuous(expand=c(0, 0)) +    # no extra space on x and y axes
+          scale_y_continuous(expand=c(0, 0),labels=scales::percent_format(accuracy =0.1)) +
+          coord_cartesian(xlim=xlimits, ylim=ylimits) + 
+          theme_heatPlot()
+      }
+  }else{ #if axes not modified
+    p1 <- ggplot(data = plotData, aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]])) +
+      stat_contour_filled(aes(z = .data$perfThreshComb), breaks = breaks) + #, alpha = perfSpace_alpha) +
+      # to add outlines
+      stat_contour(aes(z = .data$perfThreshComb), breaks = breaks, colour = "black") +
+      labs(x = xyLabels[1], y = xyLabels[2]) +
+      scale_x_continuous(expand=c(0, 0)) +    # no extra space on x and y axes
+      scale_y_continuous(expand=c(0, 0)) +
+      coord_cartesian(xlim=xlimits, ylim=ylimits) + 
+      theme_heatPlot()
+  }
+  
   
   # ******* set to NULL in case there is a column named "perfThreshComb" **** 
   # Remove if fill based on exceeded thresholds for climData points are to be implemented
@@ -343,8 +400,11 @@ addClimData <- function(p1,                  # ggplot object to add the plot to
         warning("climData is not plotted since the perturbations in the data are outside the ranges of the perturbations in sim.")
       } else {
         if (is.null(climData[[perfName]])) {
-          p1 <-  p1 + geom_point(data = climData, mapping = aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]], shape = .data$Name), show.legend = TRUE, size = ptSize, colour = perfSpace_climDataCol, fill = perfSpace_climDataBg) + 
-            scale_shape_manual(name = NULL, values = rep(c(21, 22, 24, 25, 23, 16, 17, 18, 19, 20, c(0:14)), 20), guide = guide_legend(order = 2, ncol = ncolLeg))
+          p1 <-  p1 + 
+            geom_point(data = climData, mapping = aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]], shape = .data$Name), show.legend = TRUE, size = ptSize, colour = perfSpace_climDataCol, fill = perfSpace_climDataBg) +
+            scale_shape_manual(name = NULL, values = rep(c(21, 22, 24, 25, 23, 16, 17, 18, 19, 20, c(0:14)), 20))+#, guide = guide_legend(order = 2, ncol = ncolLeg,overide.aes=list(fill=rep(NA,500))))+
+            guides(shape = guide_legend(order=3,override.aes = list(size = ptSize,fill=NA),nrow=ncolLeg,byrow=T))+
+            theme(legend.key=element_rect(fill=NA))
         } else {
           # colour points based on performance value
           # currently this code is used only by plotPerformanceSpace - can implement for plotPerformanceThesh if required
@@ -361,9 +421,11 @@ addClimData <- function(p1,                  # ggplot object to add the plot to
             message("Legend cannot differentiate between more than five unique climdata$Name. All data are plotted using the same shape.")
           }
           
-          p1 <-  p1 + geom_point(data = climData, mapping = aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]], fill = .data[[perfName]], shape = .data$Name), show.legend = TRUE, size = ptSize, colour = "black", alpha = perfSpace_alpha) + 
+          p1 <-  p1 + 
+            geom_point(data = climData, mapping = aes(x = .data[[xyAtts[1]]], y = .data[[xyAtts[2]]], fill = .data[[perfName]], shape = .data$Name), show.legend = TRUE, size = ptSize, colour = "black", alpha = perfSpace_alpha) + 
             scale_shape_manual(name = NULL, values = c(21, 22, 24, 25, 23), 
-                               guide = guide_legend(overide.aes = list(fill = NA), order = 2, ncol = ncolLeg))
+                               guide = guide_legend(overide.aes = list(fill = NA), order = 2, ncol = ncolLeg))+
+            theme(legend.key = element_rect(fill = NA))
         }
       }
     } else {

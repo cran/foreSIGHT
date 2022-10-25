@@ -4,6 +4,7 @@ context("P_latent model check")
 test_that("P_latent output matches saved reference", {
   
   randomVector <- c(0.5349710, 0.5463762, 0.8611103, 0.6066115, 0.6701731)
+  randomUnitNormalVector = stats::qnorm(randomVector)
   parSigma <- rep_len(5, length.out = 5)
   parMu <- rep_len(-3, length.out = 5)
   parLambda <- rep_len(1.2, length.out = 5)
@@ -12,7 +13,7 @@ test_that("P_latent output matches saved reference", {
   parTS <- list(sigma = parSigma, mu = parMu, lambda = parLambda, alpha = parAlpha)
   
   file_name = "../P_latent_output1.rds"
-  expect_equal_to_reference(P_latent(parTS, randomVector), file = file_name)
+  expect_equal_to_reference(P_latent(parTS=parTS, randomUnitNormalVector=randomUnitNormalVector), file = file_name)
   
 })
 

@@ -29,6 +29,7 @@
 #' # using the metric argument
 #' plotPerformanceOAT(egSimPerformance, egSimSummary, metric = "Reliability (-)")
 #' @export
+#' @import ggplot2
 
 # Need to think about whether the function would work for "regGrid" perturbations - in this case perturbations would be averaged across perturbations in other attributes
 # Impose restriction for "OAT" later if required
@@ -202,8 +203,12 @@ getOATData <- function(attPerturb,   # vector; perturbed attNames
     attVar <- strsplit(attPerturb[i], "_")[[1]][1]
     attOther <- attNames[-icol]
     
+    if (length(attPerturb)==1) {
+      iInd <- 1:nrow(targetMat)
+    } else {
     iIndList <- list()
     # Index where other attributes are not perturbed
+    
     for (j in 1:length(attOther)) {
       othVar <- strsplit(attOther[j], "_")[[1]][1]
       if (othVar == "Temp") {
@@ -216,9 +221,9 @@ getOATData <- function(attPerturb,   # vector; perturbed attNames
       jInd <- which(targetJ == noPert)
       iIndList[[j]] <- jInd
     }
-    
-    # Intersect all index where the other attributes are not perturbed
-    iInd <-  Reduce(intersect, iIndList)
+      # Intersect all index where the other attributes are not perturbed
+      iInd <-  Reduce(intersect, iIndList)
+    }
     
     if(!(identical(iInd, numeric(0)))) {
       if(!identical(iInd, integer(0))) {
@@ -322,10 +327,10 @@ OATPlot <- function(plotData, col = NULL, ylimits = NULL) {
   varUnits <- getVarUnits(varName)
   
   attNames <- unique(plotData[["attribute"]])
-  attFullNames <- mapply(tagBlender_noUnits, attNames)
+  attFullNames <- mapply(tagBlender, attNames)
   
   # aggregate data if required
-  plotDataMean <- aggregate(.~perturbation+attribute, plotData, mean)
+  plotDataMean <- stats::aggregate(.~perturbation+attribute, plotData, mean)
   xLabeltext <- paste0("Perturbation", " (", varUnits, ")")
   
   if (is.null(col)) {

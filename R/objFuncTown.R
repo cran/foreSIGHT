@@ -33,8 +33,6 @@ objFuncMC<-function(attSel= NULL,     # vector of selected attributes
   }else{
     score=-dist
   }
-
-  
   
   # #FIND RELEVANT ATTPRIMS
   # attPrimSub=intersect(attPrim,attSel) 

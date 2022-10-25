@@ -8,7 +8,7 @@
 #' @format A data frame with 6 rows and 6 variables:
 #' \describe{
 #'   \item{P_ann_tot_m}{change in mean annual total P, fraction}
-#'   \item{P_ann_seasRatio_m}{change in seasonal ratio of P, fraction}
+#'   \item{P_ann_seasRatio}{change in seasonal ratio of P, fraction}
 #'   \item{P_ann_nWet_m}{change in the number of wet days, fraction}
 #'   \item{Temp_ann_avg_m}{change in average annual Temp, additive}
 #'   \item{Name}{name of the climate model}
@@ -81,4 +81,15 @@
 #' }
 "egSimPerformance_systemB"
 
+
+#' Output from call to generateScenarios() using multi-site model (see example 5 in generateScenarios).
+#'
+#' @format A list with 4 elements
+#' \describe{
+#'   \item{Rep1}{List containing majority of simulation output, including output for different calibration stages }
+#'   \item{simDates}{the dates of the simulation}
+#'   \item{expSpace}{the exposure space of the simulation}
+#'   \item{controlFile}{the setting in the control file}
+#' }
+"egMultiSiteSim"
 

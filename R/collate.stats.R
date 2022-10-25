@@ -137,7 +137,7 @@ collateDatReps<-function(TS=NULL,
 #Function lists to store
 stat.func<-list(max=function(data) max(x=data,na.rm=TRUE),
                 min=function(data) min(x=data,na.rm=TRUE),
-                median=function(data) median(x=data,na.rm=TRUE),
+                median=function(data) stats::median(x=data,na.rm=TRUE),
                 mean=function(data) mean(x=data,na.rm=TRUE),
                 sd=function(data) sd(x=data,na.rm=TRUE),
                 skew=function(data) skewness(x=data,na.rm=TRUE)

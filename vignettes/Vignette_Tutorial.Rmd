@@ -1,6 +1,6 @@
 ---
 title: "Detailed Tutorial: Climate 'Stress-Testing' using *fore*SIGHT"
-author: "Anjana Devanand, Seth Westra, Michael Leonard, Sam Culley, Bree Bennett"
+author: "Anjana Devanand, Seth Westra, Michael Leonard, Sam Culley, David McInerney, Bree Bennett"
 date: "`r format(Sys.time(), '%d %b %Y')`"
 output: 
   rmarkdown::html_vignette:
@@ -136,28 +136,68 @@ The following subsections will guide you through each of decisions.
 > 
 > Beyond these high-level considerations, there are also several further practical considerations:  
 >  
-> - Is it possible to perturb the attributes using the an available perturbation method? This is relevant as part of the choice between 'simple scaling' and stochastic methods, and also as part of the choice of specific stochastic weather generator to use (discussed further in Step B). 
+> - Is it possible to perturb the attributes using the available perturbation method? This is relevant as part of the choice between 'simple/seasonal scaling' and stochastic methods, and also as part of the choice of specific stochastic weather generator to use (discussed further in Step B). 
 > - Is there enough *marginal* value of including an attribute given others that have already been included? For example, if a stress test has already been conducted on the 95 percentile of daily rainfall, then perhaps stress testing it against the 96 percentile is unlikely to deliver much additional insight. 
 > - Can the system model take the relevant perturbed weather generator values as inputs? For example if a system model runs at a daily timescale, then its capacity to account for sub-daily inputs is limited. Note that in this case, if *a priori* knowledge suggests that variability at the sub-daily scale is very important, then it may be a case of developing a better system model!
 > 
 > The outcome of attribute selection could be a large number of attributes identified for perturbation, which may then need to be reduced in subsequent steps. This was discussed at length by Culley et al (2020) and will likely also dictate the sampling strategy discussed in Step A3. 
 
-*fore*SIGHT has the relative unique capability to perturb a large number of climate attributes, either jointly or in isolation. The climate attributes that are currently supported by *fore*SIGHT and their definitions can be viewed using the helper functions `viewAttributes()` and `viewAttributeDef()` available in the package.
+*fore*SIGHT has the relative unique capability to perturb a large number of climate attributes, either jointly or in isolation. In *fore*SIGHT attribute names are defined using the format “var_strat_ funcPars_op”, where 
 
+- “var” is the variable name, 
+- “strat” is temporal stratification, 
+- “func” is function name  (with “Pars” denoting additional optional parameters), and  
+- “op” is an optional operation.
+
+For example, “P_ann_tot_m” is the mean of the total rainfall calculated over each year (i.e. mean annual rainfall) and “P_ann_P99” is 99th percentile of rainfall calculated over all days.
+
+**Variable names** include
+
+-	“P”: rainfall
+-	“T”: temperature
+-	“PET”: Potential evapotranspiration
+-	“R”: radiation
+
+**Temporal stratifications** are
+
+-	“ann”: data from entire year
+-	“JJA”, “SON”, etc: seasons
+-	“Jan”, “Feb”, etc: months
+
+**Function names** (and optional parameters) include
+
+-	“tot”: total
+-	“P99”: 99th percentile
+-	“maxDSDthresh1”: maximum dry-spell duration (with threshold above 1mm)
+
+A full list of attribute functions supported in *fore*SIGHT can be viewed using the helper functions `viewAttributeFuncs()`.
+
+*fore*SIGHT also allows users to define their own custom functions. The names of these functions must have the format “func_customName”, where “customName” is the custom attribute function. These functions must have the argument “data”, which represents the time series of climate data. For example, 
+```{r, R.options = list(width = 100)}
+func_happyDays = function(data){
+  return(length(which((data>25)&(data<30))))
+}
+```
+can be used in the attribute “T_ann_happyDays_m” for calculating the average number of days each year with temperatures between 25^o^C and 30^o^C.   
+**Operator name** is optional, and currently is limited to  
+
+-	 “m”: mean value of metric calculated over all years
+-	Often “m” will be left empty.  
+
+The use of the operator “m” is a subtle, but important, choice. It determines whether the metric is calculated once using all the data (when operator is not specified), or whether the metric is calculated for each year, and then averaged over all years (when operator specified as "m"). 
+For example, “P_ann_P99” refers to the 99th percentile of daily rainfall calculated over all days, while “P_ann_P99_m” would be the mean value of the 99th percentile of daily rainfall from each year.        
+The definition of each climate attribute supported by *fore*SIGHT can be viewed using the helper function `viewAttributeDef()` available in the package.
 ``` {r atts, R.options = list(width = 100)}
-viewAttributes()
-
 viewAttributeDef("P_ann_tot_m")
 ```
 
 It is noted that attributes are specified either as a fractional change relative to historical levels (and thus do not have units), or they are specified using the metric system. For situations where the units are not consistent with those adopted by the preferred system model, then unit conversions will need to be included as part of the system model wrapper function. This is covered further as part of Step C.
 
-The large number of supported attributes in *fore*SIGHT does not mean that all attributes can be used in all situations. In particular, *fore*SIGHT has two key perturbation methods (simple scaling and stochastic generation), and an ever-increasing library of stochastic generators. In the case of simple scaling, the only attributes that can be perturbed are annual averages, with other attributes changing in a proportional manner. In contrast, when using stochastic generation, then the attributes that can be perturbed will depend on the stochastic generator. This can be interrogated as follows:
+The large number of supported attributes in *fore*SIGHT does not mean that all attributes can be used in all situations. In particular, *fore*SIGHT has two key perturbation methods -- scaling ("simple" or "seasonal") and stochastic generation (with an ever-increasing library of stochastic generators). 
 
-``` {r compAtts, R.options = list(width = 100)}
-# models that are compatible with the attributes of precipitation
-viewModels("P", compatibleAtts = TRUE)
-```
+In the case of simple scaling, the only attributes that can be perturbed are annual averages, while for  with other attributes changing in a proportional manner. For seasonal scaling, annual averages and “seasonality ratio” can be perturbed in conjunction. 
+
+In contrast, when using stochastic generation, then the attributes that can be perturbed will depend on the stochastic generator. For example, stochastic generators with seasonal variations in parameters can be used to perturb seasonally stratified attributes, whereas annual models (with no parameter variation) cannot. In general, annual parameter variation should not be used for perturbing attributes with seasonal or monthly temporal stratification (e.g. “P_JJA_tot_m” and “T_Jan_ave_m”) or seasonality ratios (e.g. “P_ann_seasRatio”). Seasonal parameter variation should not be used for perturbing attributes with monthly temporal stratification (e.g. “T_Jan_ave_m”).
 
 Once the attributes are selected, we need to include these as a vector into the function `createExpSpace` via the argument `attPerturb`. For example if we are interested in the total annual rainfall, the mean annual number of wet days, the total JJA rainfall, we define the argument `attPerturb` as:
 
@@ -175,7 +215,7 @@ Once the attributes are selected, we need to include these as a vector into the 
 >  
 > Thus, by **plausible**, we mean that the changes are deemed to be physically possible, albeit not necessarily likely in all cases. For this reason, our guidance generally has been to select attribute ranges (minimum and maximum values) that roughly represent the 'worst case' of what is possible based on current understanding. In practice this could mean selecting bounds that are slightly wider than the range identified by climate models (recognising that climate models may not capture all plausible future changes), or consideration of various other lines of evidence.  
 >  
-> Yet we want to emphasise the word 'slightly' here. We know the world is not going to warm by 100^o^C, so let's not get carried away imagining worse case scenarios that are almost certainly not going to occur in reality! This not only would represent a waste of computational resources, but also would direct analytical attention way from the sorts of changes that are more likely to occur in practice.  
+> Yet we want to emphasise the word 'slightly' here. We know the world is not going to warm by 100^o^C, so let's not get carried away imagining worse case scenarios that are almost certainly not going to occur in reality! This not only would represent a waste of computational resources, but also would direct analytical attention away from the sorts of changes that are more likely to occur in practice.  
 >  
 > A final note. *fore*SIGHT---as well as every other application of 'bottom-up' or 'scenario-neutral' analysis we have seen thus far---defines the bounds of the exposure space by the bounds in individual attributes. In other words, the exposure space becomes a (hyper) cube defined by the univariate bounds. Yet certain *combinations* of changes may be more or less likely, and indeed some combinations may not be physically possible. This is a current limitation of bottom-up methods, and is addressed somewhat by the subsequent superposition of 'top-down' projections onto the exposure space to highlight parts of the space that are more or less probable. 
 
@@ -250,9 +290,9 @@ In addition to `OAT` and `regGrid` sampling methods, it is also possible to put 
 
 As described in the Box above, holding some attributes at constant levels (and commonly at the level of the **reference time series** can be important to generate realistic weather time series. This is where the `attHold` argument comes in, and represents a list of all attributes to keep at historical levels. Something like:
 
-`attHold <- c("P_ann_P99_m", "P_ann_maxWSD_m", "P_ann_seasRatio_m")`
+`attHold <- c("P_ann_P99", "P_ann_maxWSD_m", "P_ann_seasRatio")`
 
-In this case, these three attributes are held at reference levels. The attributes 99th percentile rainfall, maximum length of the wet spells are held at reference levels so that the perturbations do not result in unrealistic extreme rainfall events. In addition, the attribute "P_ann_seasRatio_m" is held at reference levels so that the seasonal cycle of the generated data is realistic. If you're still not convinced why this is important, go to Step B where we provide an example of not holding some attributes at constant values. There are also mechanisms to ensure to preferentially matching the desired values of some attributes during time series generation, by prescribing **attribute penalty**. More on this in Step B.
+In this case, these three attributes are held at reference levels. The attributes 99th percentile rainfall, maximum length of the wet spells are held at reference levels so that the perturbations do not result in unrealistic extreme rainfall events. In addition, the attribute "P_ann_seasRatio" is held at reference levels so that the seasonal cycle of the generated data is realistic. If you're still not convinced why this is important, go to Step B where we provide an example of not holding some attributes at constant values. There are also mechanisms to ensure to preferentially matching the desired values of some attributes during time series generation, by prescribing **attribute penalty**. More on this in Step B.
 
 Now that we've discussed the theoretical considerations and core functionality associated with Step A, we now bring all the pieces together to show some realistic 'use cases' for the `createExpSpace` function.
 
@@ -262,14 +302,14 @@ Consider the starting phase of a case study, where a number climate attributes h
 
 Suppose that an understanding of the dynamics of the system under consideration suggests that the system is sensitive to changes in annual and JJA rainfall totals. In addition, changes in the number of wet days are also expected to affect the system performance. So these attributes are selected for perturbation to create an "OAT" exposure space for the preliminary stress-test. Regional climate projections for the region indicate that the annual and JJA total rainfalls are expected to decrease. The range of the projected decreases in annual total rainfall is -20% to 0%, the range of projected decreases in JJA total is -30% to -0%, and the projected changes in the number of wet days is -10% to +10% for the future time-slice of interest. The minimum and maximum perturbation bounds encompassing these projected changes are selected for the stress-test, to cover the range of expected changes in the region. The generated exposure space is selected to be larger than the expected changes from climate projections by 10%. Thus the min-max bounds selected are: (0.7 to 1.1) for "P_ann_tot_m", (0.6 to 1.1) for "P_JJA_tot_m", and (0.8 to 1.2) for "P_ann_nWet_m". Based on computational resources required to generate the data and run the system model we decide to perform the analysis using a total of 15 target locations in the exposure space. This information is used to select the perturbation increment of the perturbed attributes.
 
-To maintain the realism of the perturbed time series, some attributes have to be held at reference levels. The attributes "P_ann_P99_m", "P_ann_maxWSD_m" are selected to be held at reference levels so that the generated time series have realistic wet extremes, with decreasing annual and JJA totals. The hypothetical climate projections also indicate that there are no changes in the extremes, so these are assumed to stay the same as the reference series. In addition, the seasonal rainfall ratio is held at existing levels so that the seasonal cycle represented in the generated time series are realistic. It is noted that as part of the "OAT" sampling strategy, each of the "perturbed" attributes are being changed individually with the remaining perturbed attributes staying at the levels of the reference time series, and so effectively become "held" attributes as part of the perturbation.
+To maintain the realism of the perturbed time series, some attributes have to be held at reference levels. The attributes "P_ann_P99", "P_ann_maxWSD_m" are selected to be held at reference levels so that the generated time series have realistic wet extremes, with decreasing annual and JJA totals. The hypothetical climate projections also indicate that there are no changes in the extremes, so these are assumed to stay the same as the reference series. In addition, the seasonal rainfall ratio is held at existing levels so that the seasonal cycle represented in the generated time series are realistic. It is noted that as part of the "OAT" sampling strategy, each of the "perturbed" attributes are being changed individually with the remaining perturbed attributes staying at the levels of the reference time series, and so effectively become "held" attributes as part of the perturbation.
 
 The following example code illustrates the creation of an 'OAT' exposure space using the `createExpSpace` function.
 
 ``` {r expSpaceOAT, fig.align = 'center', dpi = 100, fig.show = "hold", fig.width = 5, fig.height = 5, out.width = "47%", fig.cap = "Target locations in two slices of an OAT exposure space"}
 # specify attributes
 attPerturb <- c("P_ann_tot_m", "P_ann_nWet_m", "P_JJA_tot_m")
-attHold <- c("P_ann_P99_m", "P_ann_maxWSD_m", "P_ann_seasRatio_m")
+attHold <- c("P_ann_P99", "P_ann_maxWSD_m", "P_ann_seasRatio")
 
 # ***** OAT Exposure Space ****** 
 # specify perturbation type and minimum-maximum ranges of the perturbed attributes
@@ -331,7 +371,7 @@ The below code provides an example of this usage.
 
 ```{r, expSpaceIrregular, fig.align = 'center', dpi = 100, fig.show = "hold", fig.width = 5, fig.height = 5, out.width = "47%", fig.cap = "Target locations in two slices of an irregular grid exposure space"}
 attPerturb <- c("P_ann_tot_m", "P_ann_nWet_m", "P_JJA_tot_m")
-attHold <- c("P_ann_P99_m", "P_ann_maxWSD_m", "P_ann_seasRatio_m")
+attHold <- c("P_ann_P99", "P_ann_maxWSD_m", "P_ann_seasRatio")
 
 # creating example target locations and saving it in a CSV file for illustration
 # note that the user would create these target locations using a sampling method of their choice
@@ -377,7 +417,7 @@ file.remove(tempFile)
 
 > **In this step you'll learn...**
 > 
-> - What's meant by the terms **reference period**, **simple scaling**, **stochastic generation**, **stochastic weather generator**, **attribute penalty**, **realisation** and **random seed**
+> - What's meant by the terms **reference period**, **simple and seasonal scaling**, **stochastic generation**, **stochastic weather generator**, **attribute penalty**, **realisation** and **random seed**
 > - How to select an appropriate reference period for subsequent analysis
 > - How to select the time series perturbation method
 > - How to select the stochastic generator
@@ -426,17 +466,27 @@ The variables available in *fore*SIGHT and their units can be viewed using the f
 viewVariables() 
 ```
 
-An example 'observed data' object sourced from multiple observation gauges to represent a general Adelaide (South Australia) climate is available in the package and can be loaded using the `data` command as shown below. This is intended to illustrate the expected format of `reference`. The `reference` data should be a data.frame. The first three columns should contain the `year`, `month`, and `day` of the data named accordingly. Further columns of the data.frame should contain the hydro-climate variables of interest named by their short names as listed in the `viewVariables()` function. 
+The `reference` data can either be a data.frame or a list. List format is required for multi-site data. When using a data.frame, the first three columns should contain the `year`, `month`, and `day` of the data named accordingly. Further columns of the data.frame should contain the hydro-climate variables of interest named by their short names as listed in the `viewVariables()` function. An example `reference` data.frame object representing a general Adelaide (South Australia) climate is available in the package and can be loaded using the `data` command as shown below. This is intended to illustrate the expected data.frame format of `reference`. 
 
-```{r refFormat}
+```{r refFormatDf}
 # Load example climate data
 data(tankDat)
 
-# Expected format of the input obs climate data
+# Expected data.frame format of the input obs climate data
 head(tank_obs)
 ```
 
-The time series can be input to the `generateScenarios` function using the `reference` argument.
+When specifying multi-site `reference` data as a list, the list should contain vectors for the `year`, `month`, and `day`, and matrices for multi-site data hydro-climate variables. An example with multi-site rainfall data in the Barosssa Valley (South Australia) is provided. 
+
+```{r refFormatList}
+# Load example multi-site rainfall data
+data("barossaDat")
+
+# Expected format of multi-site rainfall data within reference list. 
+head(barossa_obs$P)
+```
+
+The climate time series can be input to the `generateScenarios` function using the `reference` argument. For example, for using the single site `tank_obs` data, we would specify
 
 ```{r refInput}
 reference = tank_obs
@@ -456,12 +506,12 @@ tank_obs_atts
 > 
 > As highlighted in the Introduction, a key role of the *fore*SIGHT software is to enable the quantitative stress testing of climate-sensitive systems using perturbed hydroclimatic time series. But what is the best way of achieving the perturbations?
 >
-> There are two methods supported in *fore*SIGHT, and these reflect the main approaches that have been adopted in most published scenario-neutral applications thus far. 
+> There are two approaches supported in *fore*SIGHT, and these reflect the main approaches that have been adopted in most published scenario-neutral applications thus far. 
 >
-> The first method is called **Simple Scaling**, which as the name suggests scales the weather time series by specified additive or multiplicative factors to achieve the desired perturbed time series. Although this method has the benefit of simplicity, there are a number of disadvantages:
+> The first approach is based on scaling the observed hydroclimatic time series, which can be performed in *fore*SIGHT using either **Simple Scaling** or **Seasonal Scaling**. Simple Scaling scales the weather time series by specified additive or multiplicative time-invariant factors to achieve the desired perturbed time series. Seasonal scaling follows a similar approach, but allows the multiplicative factors to vary throughout the year. Although the scaling methods have the benefit of simplicity, there are a number of disadvantages:
 > 
 > - some statistical properties such as the rainfall wet-dry patterns or extremes cannot be perturbed
-> - multiple attributes cannot be perturbed in combination
+> - many attributes cannot be perturbed in combination
 > - it is not possible to hold some desired attributes at historical levels while perturbing others
 > - the length of the generated time series cannot be longer than the supplied reference time series.
 >
@@ -472,11 +522,11 @@ tank_obs_atts
 > - If both the **Perturbed Attributes** and **Held Attributes** are not carefully specified, it is possible to generate unrealistic time series
 > - Care is needed to match the specific stochastic generator to the problem requirements.
 >
-> It is difficult to provide definitive advice on the most appropriate method to select, as it will depend on the unique aspects of each problem. However the best guide will come from the attributes that were selected during the analysis of Step A1---if individual attributes or attribute combinations have been selected that cannot be generated using **Simple Scaling**, then this provides strong indication that stochastic methods are likely to be most appropriate. 
+> It is difficult to provide definitive advice on the most appropriate method to select, as it will depend on the unique aspects of each problem. However the best guide will come from the attributes that were selected during the analysis of Step A1---if individual attributes or attribute combinations have been selected that cannot be generated using **Simple or Seasonal Scaling**, then this provides strong indication that stochastic methods are likely to be most appropriate. 
 
 As highlighted in the above box, care is needed to decide select the specific perturbation method, with the decision depending significantly on the attributes selected for stress testing as part of Step A1. Once the method of perturbation has been selected, you need to supply this information to the function `generateScenarios` via the argument controlFile. 
 
-In particular, if simple scaling is required, then simply use the argument:
+In particular, if simple or seasonal scaling is required, then simply use the argument:
 
 ```{r controlFile1, R.options = list(width = 100)}
 controlFile = "scaling"
@@ -497,7 +547,7 @@ controlFile = path-to-a-user-created-JSON-file
 
 where the JSON file contains a range of advanced options including selecting the type of stochastic model, overwriting the default model parameter bounds, changing default optimisation arguments, and setting penalty attributes to be used in optimisation. 
 
-If you elect to use 'simple scaling' you can skip straight to Use Case 1 (Simple Scaling) at the end of this chapter. If you elect to use the default stochastic method, you can skip straight to Use Case 2 (Using the Default Stochastic Models). However if you would like to choose the stochastic generator or add penalty weights to the attributes, then continue reading (for other settings in the JSON file such as default weather generator parameter bounds or optimisation arguments, refer to Options for Advanced Users chapter at the end of this tutorial). 
+If you elect to use simple or seasonal scaling you can skip straight to Use Case 1 (Simple Scaling) or Use Case 2 (Seasonal Scaling) at the end of this chapter. If you elect to use the default stochastic method, you can skip straight to Use Case 3 (Using the Default Stochastic Models). However if you would like to choose the stochastic generator or add penalty weights to the attributes, then continue reading (for other settings in the JSON file such as default weather generator parameter bounds or optimisation arguments, refer to Options for Advanced Users chapter at the end of this tutorial). 
 
 
 ## 4.3. Step B3: Selecting the stochastic generator
@@ -651,7 +701,7 @@ If you have elected to use penalty attributes to generate scenarios, refer to Us
 
 > **Key Considerations: Step B5**
 > 
-> The issues in this section only pertain to stochastically generated series; for simple scaling, the length of **Perturbed Time Series** is equivalent to the **Reference Time Series**, and given there is no random element to the perturbation, issues such as number of replicates and randomisation process are not relevant.
+> The issues in this section only pertain to stochastically generated series; for simple/seasonal scaling, the length of **Perturbed Time Series** is equivalent to the **Reference Time Series**, and given there is no random element to the perturbation, issues such as number of replicates and randomisation process are not relevant.
 > 
 > For the stochastic generation algorithm, it is possible to generate time series of any arbitrary length, which can be significantly longer than the reference time series. For example, one may have a 30 year historical weather time series as the reference, yet each stochastic replicate (including, if desired, for the ‘no change’ situation) can be much longer, such as 100s or 1000s of years of length. Advantages for long replicates are that this can often result in a smoother **Performance Space**, by improving the signal-to-noise ratio (the *signal* being the climatic changes represented by the **Perturbed Attributes**, and the *noise* being the stochastic **Weather Noise**). Disadvantages are largely linked to run-time, both for optimisation of the stochastic generator (i.e. as done during Step B), and for running the system model (see Step C). 
 > 
@@ -741,11 +791,45 @@ data(tankDat)
 # generate perturbed time series using simple scaling
 sim <- generateScenarios(reference = tank_obs,             # input observed data
                          expSpace = expSpace,        # exposure space created by the user
-                         controlFile = "scaling")    # using simple scaling
+                         controlFile = "scaling")    # using scaling
 
 ```
 
-## Use Case B2: Using the default stochastic models
+Simple scaling can also be applied to multi-site climate data. See the help file for `generateScenarios` for details and a working example. 
+
+## Use Case B2: Seasonal Scaling
+
+Seasonal scaling can be used to perturb the seasonal pattern in a hydroclimate variable, in addition to perturbing annual totals/means. The following code provides an example where the “seasRatio” – defined as the ratio of total wet season rainfall to dry season rainfall – is perturbed.   
+
+``` {r seasonalscaling, fig.align = 'center', dpi = 100, fig.width = 5, fig.height = 5, out.width = "60%", fig.cap = "Target locations in the exposure space"}
+# specify perturbed attributes
+attPerturb <- c("P_ann_tot_m","P_ann_seasRatio")
+
+# specify perturbation type and minimum-maximum ranges of the perturbed attributes
+attPerturbType <- "regGrid"
+attPerturbSamp <- c(9, 9)
+attPerturbMin = c(0.8, 0.9)
+attPerturbMax = c(1.2, 1.3)
+
+# create the exposure space
+expSpace <- createExpSpace(attPerturb = attPerturb, 
+                           attPerturbSamp = attPerturbSamp, 
+                           attPerturbMin = attPerturbMin,
+                           attPerturbMax = attPerturbMax, 
+                           attPerturbType = attPerturbType,
+                           attHold = NULL)                    # no attributes held at historical levels
+
+# Load example obs climate data
+data(tankDat)
+
+# generate perturbed time series using simple scaling
+sim <- generateScenarios(reference = tank_obs,             # input observed data
+                         expSpace = expSpace,        # exposure space created by the user
+                         controlFile = "scaling")    # using scaling
+
+```
+
+## Use Case B3: Using the default stochastic models
 
 The default stochastic models in *fore*SIGHT can be used to generate data in most cases. These models are compatible with all the hydro-climate attributes in *fore*SIGHT. This use case illustrates stochastic generation using the default models.
 
@@ -807,7 +891,7 @@ The mean of the absolute biases in each simulated attribute (both perturbed and 
 
 In this example the use of default stochastic models without penalty attributes yields satisfactory results for the target values of the specified attributes. 
 
-## Use Case B3: Why holding attributes at reference levels are necessary
+## Use Case B4: Why holding attributes at reference levels are necessary
 
 When using stochastic models to generate the perturbed time series, it is necessary to hold some attributes at reference levels to ensure the realism of the simulated climate data. This use case provides an example to illustrate why.
 
@@ -836,13 +920,13 @@ We can use the `calculateAttributes` function to calculate the values of various
 
 ``` {r useCaseB3_noHoldAtts, R.options = list(width = 100)}
 # calculate selected attributes from reference
-attSel <- c("P_ann_tot_m", "P_ann_seasRatio_m", "P_ann_nWet_m", "P_ann_maxDSD_m", "P_ann_maxWSD_m",
-            "P_ann_R10_m", "P_ann_dyWet_m", "P_ann_P99_m")
+attSel <- c("P_ann_tot_m", "P_ann_seasRatio", "P_ann_nWet_m", "P_ann_maxDSD_m", "P_ann_maxWSD_m",
+            "P_ann_R10_m", "P_ann_dyWet_m", "P_ann_P99")
 obsAtts <- calculateAttributes(tank_obs, attSel)
 
 # get the simulated precipitation and dates from sim & calculate the same attributes
 P <- sim[["Rep1"]][["Target1"]][["P"]][["sim"]]   
-simData <- cbind(sim[["simDates"]], P)
+simData <- cbind(as.data.frame(sim[["simDates"]]), P)
 simAtts <- calculateAttributes(simData, attSel)
 
 # calculate the % differences between simulated attributes and reference
@@ -850,13 +934,13 @@ percAttDiff <- (simAtts - obsAtts)/obsAtts*100
 percAttDiff
 ```
 
-Thus, we need to select some other attributes to hold at existing levels to make sure that the simulated data is physically realistic. Consider the other precipitation attributes calculated above. Some of them are related to number and sequence of wet precipitation days (number of wet days, wet & dry spell lengths), while others are related to the intensity of precipitation (mean wet day rainfall, 99^th^ percentile rainfall). "P_ann_R10_m" is actually a combined measure of frequency and intensity, and "P_ann_seasRatio_m" is a measure of wet to dry seasonal rainfall (Note: use `viewAttributeDef` for attribute definitions). If we select all these attributes to be held at existing levels, it would become almost impossible to perturb the annual precipitation as desired since a 30% increase in "P_ann_tot_m" warrants changes in atleast some of these rainfall characteristics. So, we need to select a viable subset of these other attributes to hold at reference levels.  
+Thus, we need to select some other attributes to hold at existing levels to make sure that the simulated data is physically realistic. Consider the other precipitation attributes calculated above. Some of them are related to number and sequence of wet precipitation days (number of wet days, wet & dry spell lengths), while others are related to the intensity of precipitation (mean wet day rainfall, 99^th^ percentile rainfall). "P_ann_R10_m" is actually a combined measure of frequency and intensity, and "P_ann_seasRatio" is a measure of wet to dry seasonal rainfall (Note: use `viewAttributeDef` for attribute definitions). If we select all these attributes to be held at existing levels, it would become almost impossible to perturb the annual precipitation as desired since a 30% increase in "P_ann_tot_m" warrants changes in atleast some of these rainfall characteristics. So, we need to select a viable subset of these other attributes to hold at reference levels.  
 
 Suppose *a priori* knowledge suggests that an increase in rainfall intensity is the typical driving mechanism behind increases in annual rainfall in the region, and that a change in seasonal ratio is unrealistic. We can decide to hold the wet day frequency, spell length, and seasonal ratio related attributes at reference levels, while allowing changes in the intensity attributes. An updated exposure space and simulation are generated as shown below.
 
 ``` {r useCaseB3_hold, R.options = list(width = 100)}
 attPerturb <- c("P_ann_tot_m")
-attHold <- c("P_ann_seasRatio_m", "P_ann_nWet_m", "P_ann_maxDSD_m", "P_ann_maxWSD_m")
+attHold <- c("P_ann_seasRatio", "P_ann_nWet_m", "P_ann_maxDSD_m", "P_ann_maxWSD_m")
 attPerturbType = "regGrid"
 attPerturbSamp = c(1)
 attPerturbMin = c(1.3)
@@ -877,7 +961,7 @@ The updated simulated shows much lower differences in most attributes from the r
 
 ``` {r useCaseB3_holdAtts, R.options = list(width = 100)}
 P <- simHold[["Rep1"]][["Target1"]][["P"]][["sim"]]
-simHoldData <- cbind(simHold[["simDates"]], P)
+simHoldData <- cbind(as.data.frame(simHold[["simDates"]]), P)
 simHoldAtts <- calculateAttributes(simHoldData, attSel)
 percDiff <- (simHoldAtts - obsAtts)/obsAtts*100
 percDiff
@@ -903,7 +987,7 @@ legend("topright", legend = c("reference", "sim", "simHold"), col = colSel, lwd 
 
 We can conduct further analyses of the characteristics of the simulation to decide if other attributes need to be included in `attHold`. We leave it to the reader to build on this use case to explore what adding other attributes does. In some cases, it may become difficult to obtain the desired target values (perturbations or existing levels), due to intrinsic dependencies between the attributes (eg: totals are related to intensity & frequency). In these instances, the functionality to prescribe penalty attributes and weights can be used to set preferences for lower biases in some attributes over others to obtain desired target values. More on penalty attributes in further use cases.
 
-## Use Case B4: Specifying penalty attributes 
+## Use Case B5: Specifying penalty attributes 
 
 In some cases, the attributes of the generated perturbed time series can show large biases in the target values of some attributes. Specifying penalties for biases in these attributes can reduce the biases. However, the reduction is often at the expense of increased biases in other attributes. Therefore, you'll typically need a few trials to identify appropriate penalty settings that provide desired results for specific scenarios. This use case provides such an example.
 
@@ -1008,7 +1092,7 @@ A note about the use of `seedID` in these examples: The `seedID` of the simulati
 
 The examples presented in this use case are relatively simple, but illustrates the use of penalty attribute functionality and the trade-offs in fitness involved. We expect that the users would need to apply penalty attributes and weights in most of their stress-tests to obtain the desired perturbed time series. The application becomes more complex in cases where a penalty has to be applied to multiple attributes, and one needs to decide the penalty weights for all of them. A few trial simulations may be necessary to decide the penalty settings to be used for the final stress-test in real world applications.
 
-## Use Case B5: Choosing a different stochastic model
+## Use Case B6: Choosing a different stochastic model
 
 In some cases, one might want to select an alternate stochastic model different from the default models in *fore*SIGHT. Note that the `viewModels()` function can be used to view the details of all the stochastic models available in the package. A different model may be selected based on prior knowledge about the ability of the stochastic model to represent characteristics of the climate data that are relevant for the specific case study. This use case provides an example to show how to select a different stochastic generator using the `controlFile` argument.
 
@@ -1016,7 +1100,7 @@ Consider the the following exposure space that consists of attributes pertaining
 
 ``` {r useCaseB4_sim1, R.options = list(width = 100), eval = FALSE}
 # create the exposure space
-attPerturb <- c("P_ann_tot_m", "P_ann_P99_m")
+attPerturb <- c("P_ann_tot_m", "P_ann_P99")
 attHold <- c("P_ann_maxWSD_m", "P_ann_nWet_m")
 attPerturbType = "regGrid"
 attPerturbSamp = c(2, 2)
@@ -1064,6 +1148,8 @@ sim <- generateScenarios(reference = tank_obs, expSpace = expSpace,
                          controlFile = paste0(tempdir(), "controlFile.json"))
 ```
 
+*fore*SIGHT also has the capability to perform multisite stochastic rainfall simulations, where changes can be specified in the attributes at each site, as well as in the spatial correlation between sites. See the help file for `generateScenarios()` for details and a working example.  
+
 # 5. Step C: Simulate system performance (`runSystemModel`)
 > **In this step you'll learn...**
 > 
@@ -1104,7 +1190,7 @@ In the following sections we will present an overview of the key considerations 
 
 If the system model is coded as a wrapper function in R, the system performances can be simulated using the `runSystemModel` function in *fore*SIGHT using the perturbed data generated in Step B. Alternately, the perturbed time series can be written to output files in required formats and used to simulate system performances in another programming environment. But the performances would need to be read back into R to continue with the next steps of the work flow for climate stress-testing. We provide code templates for these options after discussing Step C2.
 
-If the system model wrapper function is coded in R, it should be provided as the input to the `systemModel` argument of the `runSystemModel` function.The `systemModel` function should simulate the system performances using climate data in a data.frame, and the required system model arguments in a list (`systemArgs`) as the inputs, and return a named list containing the system performance metrics. The selection of the system performance metrics for the stress test are influenced my multiple considerations described in the next section.
+If the system model wrapper function is coded in R, it should be provided as the input to the `systemModel` argument of the `runSystemModel` function.The `systemModel` function should simulate the system performances using climate data in a data.frame or list, and the required system model arguments in a list (`systemArgs`) as the inputs, and return a named list containing the system performance metrics. The selection of the system performance metrics for the stress test are influenced my multiple considerations described in the next section.
 
 `systemModel = system-model-wrapper-function`
 
@@ -1198,7 +1284,7 @@ Example code to write scenarios to CSV files for external system models:
 # ******************************************************************
 
 # Create an exposure space
-attPerturb <- c("P_ann_tot_m","P_ann_seasRatio_m", "Temp_ann_avg_m")
+attPerturb <- c("P_ann_tot_m","P_ann_seasRatio", "Temp_ann_avg_m")
 attHold <- c("P_MAM_tot_m", "P_JJA_tot_m", "P_ann_R10_m", "Temp_ann_rng_m") 
 attPerturbType <- "regGrid"
 attPerturbSamp <- c(2, 2, 2)
@@ -1278,7 +1364,7 @@ for(r in 1:nRep) {
     # name of the csv file containing the system performance, header is the name of the metric
     inCSVFile <- paste0("SystemPerformances_Rep", r, "_Tar", t, ".csv") 
     # check.names = FALSE is useful if the metric names contain brackets around the units
-    systemPerfIn <- read.table(inCSVFile, header = TRUE, sep = ",", check.names = FALSE)
+    systemPerfIn <- utils::read.table(inCSVFile, header = TRUE, sep = ",", check.names = FALSE)
     for (m in 1:length(metrics)) {
       systemPerformance[[metrics[m]]][t, r] <- systemPerfIn[[metrics[m]]]
     }
@@ -1413,7 +1499,7 @@ p2 <- plotPerformanceSpace(performance = egSimPerformance,  # list of performanc
                    sim = egSimSummary,                    # simulation metadata
                    metric = "Avg. Deficit (L)",           # the metric to be plotted
                    attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                   attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute       
+                   attY = "P_ann_seasRatio",            # y-axis perturbed attribute       
                    topReps = 8,                          # number of top replicates to be used
                    colMap = viridisLite::plasma(20),      # colour map to use
                    colLim = c(18, 34))                    # colour limits
@@ -1434,7 +1520,7 @@ p3 <- plotPerformanceSpace(performance = egSimPerformance,  # list of performanc
                    sim = egSimSummary,                    # simulation metadata
                    metric = "Avg. Deficit (L)",           # the metric to be plotted
                    attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                   attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute       
+                   attY = "P_ann_seasRatio",            # y-axis perturbed attribute       
                    topReps = 8,                          # number of top replicates to be used
                    colMap = viridisLite::plasma(20),      # colour map to use
                    colLim = c(18, 34),                    # colour limits
@@ -1459,7 +1545,7 @@ p4 <- plotPerformanceSpace(performance = egSimPerformance,  # list of performanc
                    sim = egSimSummary,                    # simulation metadata
                    metric = "Avg. Deficit (L)",           # the metric to be plotted
                    attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                   attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute       
+                   attY = "P_ann_seasRatio",            # y-axis perturbed attribute       
                    topReps = 8,                          # number of top replicates to use
                    colMap = viridisLite::plasma(20),      # colour map to use
                    colLim = c(18, 34),                    # colour limits
@@ -1488,7 +1574,7 @@ p5 <- plotPerformanceSpaceMulti(egSimPerformance,          # 2 performance metri
                                                            #       use NA if not applicable
                            perfThreshMax = c(29, NA),      # max thresholds for each metric
                            attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                           attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute
+                           attY = "P_ann_seasRatio",            # y-axis perturbed attribute
                            topReps = 8,                   # number of top replicates to use
                            climData = egClimData,          # other climate data
                            col = viridisLite::inferno(7, direction = -1) # colours to use
@@ -1567,7 +1653,7 @@ p6 <- plotOptions(performanceOpt1 = egSimPerformance,  # performance metrics of 
                    sim = egSimSummary,                    # simulation metadata
                    metric = "Avg. Deficit (L)",           # the metric to be plotted
                    attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                   attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute       
+                   attY = "P_ann_seasRatio",            # y-axis perturbed attribute       
                    topReps = 8,                          # number of top replicates to be used
                    opt1Label = "Tank 1",                   # label of option 1
                    opt2Label = "Tank 2",                   # label of option 2
@@ -1591,7 +1677,7 @@ p7 <- plotOptions(performanceOpt1 = egSimPerformance,  # performance metrics of 
                    sim = egSimSummary,                    # simulation metadata
                    metric = "Reliability (-)",           # the metric to be plotted
                    attX = "P_ann_tot_m",                  # x-axis perturbed attribute
-                   attY = "P_ann_seasRatio_m",            # y-axis perturbed attribute       
+                   attY = "P_ann_seasRatio",            # y-axis perturbed attribute       
                    topReps = 8,                          # number of top replicates to be used
                    opt1Label = "Tank 1",                   # label of option 1
                    opt2Label = "Tank 2",                   # label of option 2
@@ -1696,7 +1782,7 @@ The code below demonstrates how user-specified optimisation arguments can be use
 
 ``` {r modOptimArgs, R.options = list(width = 100), eval = FALSE}
 # create the exposure space
-attPerturb <- c("P_ann_tot_m", "P_ann_P99_m")
+attPerturb <- c("P_ann_tot_m", "P_ann_P99")
 attHold <- c("P_ann_maxWSD_m", "P_ann_nWet_m")
 attPerturbType = "regGrid"
 attPerturbSamp = c(2, 2)
@@ -1759,7 +1845,7 @@ The below code provides an examples to show how the the user can create JSON con
 
 ``` {r modParamBounds1, R.options = list(width = 100), eval = FALSE}
 # create the exposure space
-attPerturb <- c("P_ann_tot_m", "P_ann_P99_m")
+attPerturb <- c("P_ann_tot_m", "P_ann_P99")
 attHold <- c("P_ann_maxWSD_m", "P_ann_nWet_m")
 attPerturbType = "regGrid"
 attPerturbSamp = c(2, 2)
@@ -1799,7 +1885,7 @@ If you wish to use an alternate stochastic model and modify the default bounds o
 
 ``` {r modParamBounds2, R.options = list(width = 100), eval = FALSE}
 # create the exposure space
-attPerturb <- c("P_ann_tot_m", "P_ann_P99_m")
+attPerturb <- c("P_ann_tot_m", "P_ann_P99")
 attHold <- c("P_ann_maxWSD_m", "P_ann_nWet_m")
 attPerturbType = "regGrid"
 attPerturbSamp = c(2, 2)
@@ -1862,7 +1948,7 @@ setwd(<path-to-working-directory>)
 controlFile <- <path-and-name-of-controlFile>
 
 # create exposure Space
-attPerturb <- c("P_ann_tot_m","P_ann_seasRatio_m")
+attPerturb <- c("P_ann_tot_m","P_ann_seasRatio")
 attHold <- c("P_ann_nWet_m", "P_ann_R10_m", "P_Feb_tot_m", "P_SON_dyWet_m", "P_JJA_avgWSD_m", 
              "P_MAM_tot_m", "P_DJF_avgDSD_m", "Temp_ann_rng_m","Temp_ann_avg_m")
 attPerturbType = "regGrid"
@@ -1897,7 +1983,7 @@ if (!is.null(controlFile)) {
   
 # Create random seedID
 if (is.null(seedID)) {
-  seedID <- round(runif(1)*10000)
+  seedID <- round(stats::runif(1)*10000)
 }
   
 # Create seedID vector for all replicates
@@ -2041,6 +2127,8 @@ The definitions of various terms and phrases used in this package and vignette a
 
 - **Scenario-Neutral Climate Impact Assessment:** See **Bottom-up Climate Impact Assessment**. 
 
+-	**Seasonal scaling**: A method of perturbing historical weather time series through application of seasonally varying multiplicative factors.
+
 - **Simple Scaling:** A method of perturbing historical weather time series through application of additive or multiplicative factors. 
 
 - **Stochastic Generation:** The general term for generating random data from some underlying stochastic model. See also **stochastic weather generator**
@@ -2057,7 +2145,7 @@ The definitions of various terms and phrases used in this package and vignette a
 
 - **Target Attribute Values**: **Attribute Values** that represent the objective of the climate time series perturbation method, and can include a combination of **Perturbed Attribute** values and **Held Attribute** values.  
 
-- **Top-down Climate Impact Assessment:** An approach to climate impact assessments that starts with the development of climate projections, that are used as inputs to a system model to assess projections of future system performance. See also: **Bottom-up Climate Impact Assessments**. 
+- **Top-down Climate Impact Assessment:** An approach to climate impact assessments that starts with the development of climate projections that are used as inputs to a system model to assess projections of future system performance. See also: **Bottom-up Climate Impact Assessments**. 
 
 - **Weather Noise:** The notion that, because of the non-linear dynamical nature of atmospheric processes (often referred to as 'chaos') and associated sensitivity to initial conditions, weather can appear as a random ('stochastic') process when viewed beyond the synoptic predictability window of approximately two weeks. See also: **stochastic realisation**.
 

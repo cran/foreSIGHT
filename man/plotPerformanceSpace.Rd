@@ -16,7 +16,10 @@ plotPerformanceSpace(
   attSlices = NULL,
   climData = NULL,
   colMap = NULL,
-  colLim = NULL
+  colLim = NULL,
+  contourBreaks = NULL,
+  axesPercentLabel = FALSE,
+  type = "heat.plot"
 )
 }
 \arguments{
@@ -57,6 +60,12 @@ Please refer data provided with the package that may be loaded using \code{data(
 \item{colMap}{a vector of colours; to specify the colourmap to be used. If \code{NULL}, the default foreSIGHT colourmap is used.}
 
 \item{colLim}{a vector of 2 values; the minimum and maximum limits of the colour scale.}
+
+\item{contourBreaks}{a vector; specifies breaks in the performance metric}
+
+\item{axesPercentLabel}{a logical flag; if TRUE x and y axes to be displayed in terms of percentage change instead of fraction}
+
+\item{type}{a string; indicates type of plot as "heat.plot" (default) or "filled.contour"}
 }
 \value{
 The plot of the performance space and the ggplot object.
@@ -79,25 +88,83 @@ data("egSimSummary")       # summary of stochastic simulation
 data("egSimPerformance")   # system performance calculated using the stochastic simulation
 data("egClimData")         # alternate climate data and system performance
 
-plotPerformanceSpace(egSimPerformance[2], egSimSummary)
+plotPerformanceSpace(performance=egSimPerformance[2], sim=egSimSummary)
+
+\dontrun{
+# change plot style to "filled.contour" and specify contours - show contours from 
+# 0.76 to 0.9 in increments of 0.02
+plotPerformanceSpace(type="filled.contour",performance=egSimPerformance[2], 
+                     sim=egSimSummary,contourBreaks=seq(0.76,0.9,0.02))
+                     
 
 # adding climate data, using top 10 replicates
-plotPerformanceSpace(egSimPerformance[1], egSimSummary, topReps = 10, climData = egClimData)
+plotPerformanceSpace(performance=egSimPerformance[1], sim=egSimSummary, 
+                     topReps = 10, climData = egClimData)
 
 # adding a threshold
-plotPerformanceSpace(egSimPerformance, egSimSummary, metric = "Avg. Deficit (L)", 
-climData = egClimData, perfThresh = 27.5, perfThreshLabel = "Max Avg. Deficit")
+plotPerformanceSpace(performance=egSimPerformance, sim=egSimSummary, metric = "Avg. Deficit (L)", 
+                     climData = egClimData, perfThresh = 27.5, perfThreshLabel = "Max Avg. Deficit")
 
 # user specified colMap
-plotPerformanceSpace(egSimPerformance[1], egSimSummary, climData = egClimData, perfThresh = 27.5, 
-perfThreshLabel = "Max Avg. Deficit", colMap = viridisLite::inferno(100))
+plotPerformanceSpace(performance=egSimPerformance[1], sim=egSimSummary, 
+                     climData = egClimData, perfThresh = 27.5, 
+                     perfThreshLabel = "Max Avg. Deficit", 
+                     colMap = viridisLite::inferno(100))
+
+#modify theme to change axes positioning to stacked vertically and left aligned
+plotPerformanceSpace(performance=egSimPerformance[1], sim=egSimSummary, 
+                     climData = egClimData, perfThresh = 27.5, 
+                     perfThreshLabel = "Max Avg. Deficit", 
+                     colMap = viridisLite::inferno(100))+
+ggplot2::theme(legend.box="vertical",
+               legend.position="bottom",
+               legend.box.just = "left",
+               legend.margin = ggplot2::margin(t=0.01, r=0.1, b=0.01, l=0.1, "cm"),
+               legend.justification=c(0.01,0.01))
+
+# display fractional changes axes as percentage change
+plotPerformanceSpace(performance=egSimPerformance, sim=egSimSummary, 
+                     metric = "Avg. Deficit (L)", 
+                     climData = egClimData, perfThresh = 27.5, 
+                     perfThreshLabel = "Max Avg. Deficit",
+                     axesPercentLabel=TRUE)
+
+# change displayed contours on performance space - show contours from 18 to 34 in increments of 2 L
+plotPerformanceSpace(performance=egSimPerformance, sim=egSimSummary, 
+                     metric = "Avg. Deficit (L)",
+                     climData = egClimData, perfThresh = 27.5, 
+                     perfThreshLabel = "Max Avg. Deficit",axesPercentLabel=TRUE,
+                     contourBreaks=seq(18,34,2))
+
+# change plot type to filled.contour style
+plotPerformanceSpace(type="filled.contour",performance=egSimPerformance, 
+                     sim=egSimSummary, metric = "Avg. Deficit (L)", 
+                     climData = egClimData, perfThresh = 27.5, 
+                     perfThreshLabel = "Max Avg. Deficit",axesPercentLabel=TRUE,
+                     contourBreaks=seq(18,34,2))
+
+#example overlay points manually from a dataset in a similar style to egClimData
+ptStyle= c(21,22, 24)  #select set of pt styles (e.g. hollow circle, square, triangle)
+plotPerformanceSpace(performance=egSimPerformance[1], sim=egSimSummary,axesPercentLabel=TRUE)+
+ggplot2::geom_point(data = egClimData, 
+                    mapping = ggplot2::aes(x = .data[["P_ann_tot_m"]], 
+                    y = .data[["P_ann_seasRatio"]],
+                    shape = .data[["Name"]]), 
+                    show.legend = TRUE, size = 5, colour = "black", fill = "lightgray") + 
+ggplot2::scale_shape_manual(name = NULL, values = ptStyle,
+                            guide = ggplot2::guide_legend(order = 2, nrow = 1))+ 
+                   #one row of legend for specified ptStyle types
+ggplot2::theme(legend.box="vertical", # vertical arrangement of items in legends
+               legend.position="bottom", # position legends base of figure
+               legend.justification=c(0,0)) # justification according to the plot area
 
 # example of performance generated using simple scaled simulation
 data("egScalPerformance")
 data("egScalSummary")
 data("egClimData")
-plotPerformanceSpace(egScalPerformance[1], egScalSummary, climData = egClimData, 
-perfThresh = 28.25, perfThreshLabel = "Max Avg. Deficit")
+plotPerformanceSpace(performance=egScalPerformance[1], sim=egScalSummary, climData = egClimData, 
+                     perfThresh = 28.25, perfThreshLabel = "Max Avg. Deficit")
+                     }
 }
 \seealso{
 \code{runSystemModel}, \code{generateScenarios}, \code{getSimSummary}, \code{plotPerformanceOAT}

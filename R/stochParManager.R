@@ -20,7 +20,8 @@
      modelInfo=list()
      modelInfo[[modelTag[1]]]=get.model.info(modelTag[1])                     #even if 1 model still stored in list format
    }else{
-     modelInfo=sapply(X = modelTag,FUN=get.model.info,USE.NAMES=TRUE)
+     modelInfo=lapply(X = modelTag,FUN=get.model.info)
+     names(modelInfo) = modelTag
    }
    return(modelInfo)
  }
@@ -88,7 +89,7 @@ add_ar1Param <- function(modelTag, modelInfo, datInd) {
       multiplierMean=1
       sdJumpDistr=multRange/1.96*sqrt(1-ar1ParMult^2)
       # simulation
-      X=arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
+      X=stats::arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
       X=X@.Data+multiplierMean # extract data and add on mean
       multSim=rep(NA,datInd[[modelTag[mod]]]$ndays)
       for(iy in 1:datInd[[modelTag[mod]]]$nyr){

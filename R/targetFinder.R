@@ -13,6 +13,7 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
                         attInfo=NULL,     # added info regarding attributes (maybe add in attPrim here)!!!!!!!!!!!!!
                         datInd=NULL,
                         randomVector = NULL,
+                        randomUnitNormalVector = NULL,
                         target=NULL,        # target locations: desired changes in climate to be simulated, in % relative or abs diff to baseline levels (vector)
                         attObs=NULL,        # observed series attribute values
                         lambda.mult=NULL,   # lambda multiplier for penalty function
@@ -32,6 +33,7 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
                        parS=parS,
                        modelEnv=modelEnv,      
                        randomVector = randomVector,
+                       randomUnitNormalVector = randomUnitNormalVector,
                        wdSeries=wdSeries,      
                        resid_ts=resid_ts,
                        seed=simSeed)
@@ -40,8 +42,9 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
     score=-150  #default here
   }else{
     #CALCULATE SELECTED ATTRIBUTE VALUES
-    sim.att=attribute.calculator(attSel=attSel,data=sim$sim,datInd=datInd,attribute.funcs=attribute.funcs)
-   
+#    sim.att=attribute.calculator(attSel=attSel,data=sim$sim,datInd=datInd,attribute.funcs=attribute.funcs)
+    sim.att=attribute.calculator(attSel=attSel,data=sim$sim,datInd=datInd,attInfo=attInfo)
+    
     #RELATING TO BASELINE SERIES 
     simPt=unlist(Map(function(type, val,baseVal) simPt.converter.func(type,val,baseVal), attInfo$targetType, as.vector(sim.att),as.vector(attObs)),use.names = FALSE)
     
@@ -57,7 +60,7 @@ targetFinder<- function(parS,               # vector of pars (will change in opt
   }
  
   
-  #cat(score)
+#  cat(score,'\n')
   return(score)
 }
 

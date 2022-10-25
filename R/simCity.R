@@ -7,6 +7,60 @@
   #argument_check_simulator() - inputs (modelTag=NULL,datStart=NULL,datFinish=NULL,parS=NULL)
 #------------------------------------------------
 #FUNCTIONS
+#' modSimulator
+#' 
+#' Simulates using weather generator models specified using modelTag.
+#' 
+#' modelTag provides the main function with requested models. modelTag is
+#' vector of any of the following supported models: \itemize{ \item
+#' \code{"Simple-ann"}a simple annual scaling \item \code{"P-ann-wgen"}a four
+#' parameter annual rainfall model \item \code{"P-seas-wgen"}a 16 parameter
+#' seasonal rainfall model \item \code{"P-har6-wgen"}a harmonic rainfall model
+#' with 6 periods \item \code{"P-har12-wgen"}a harmonic rainfall model \item
+#' \code{"P-har12-wgen-FS"}a harmonic rainfall model where seasonality is fixed
+#' (phase angles must be specified via
+#' modelInfoMod=list("P-har12-wgen-FS"=fixedPars=c(x,x,x,x)) \item
+#' \code{"P-har26-wgen"}a harmonic rainfall model \item \code{"P-2har26-wgen"}a
+#' double harmonic rainfall model \item \code{"Temp-har26-wgen"}a harmonic
+#' temperature model not conditional on rainfall \item
+#' \code{"Temp-har26-wgen-wd"}a harmonic temperature model dependent on wet or
+#' dry day \item \code{"Temp-har26-wgen-wdsd"}a harmonic temperature model
+#' where standard deviation parameters are dependent on wet or dry day \item
+#' \code{"PET-har12-wgen"}a harmonic potential evapotranspiration model \item
+#' \code{"PET-har26-wgen"}a harmonic potential evapotranspiration model \item
+#' \code{"PET-har26-wgen-wd"}a harmonic potential evapotranspiration model
+#' dependent on wet or dry day \item \code{"Radn-har26-wgen"}a harmonic solar
+#' radiation model (MJ/m2) }
+#' 
+#' @param datStart A date string in an accepted date format e.g.
+#' \emph{"01-10-1990"}.
+#' @param datFinish A date string in an accepted date format e.g.
+#' \emph{"01-10-1990"}. Must occur after datStart.
+#' @param modelTag A character vector of which stochastic models to use to
+#' create each climate variable. Supported tags are shown in details below.
+#' @param parS A list (names must match supplied modelTags) containing numeric
+#' vectors of model parameters.
+#' @param seed Numeric. Seed value supplied to weather generator.
+#' @param file Character. Specifies filename for simulation output.
+#' @param IOmode A string that specifies the input-output mode for the time
+#' series = "verbose", "dev" or "suppress".
+#' @keywords functions
+#' @examples
+#' 
+#' \dontrun{
+#' data(tankDat); obs=tank_obs                     #Get observed data
+#' modelTag=c("P-har12-wgen","Temp-har26-wgen")    #Select models
+#' pars=modCalibrator(obs=obs,modelTag=modelTag)   #Calibrate models
+#' sim=modSimulator(datStart="1970-01-01",         #Simulate!
+#'                  datFinish="1999-12-31",
+#'                  modelTag=modelTag,
+#'                  parS=pars,
+#'                  seed=123,
+#'                  file=paste0("tester.csv"),
+#'                  IOmode="verbose")
+#' plot(sim$P[1:365])                             #Plot first year of rainfall
+#' }
+#' @export
 modSimulator<-function(datStart=NULL,
                        datFinish=NULL,
                        modelTag=NULL,      
@@ -42,7 +96,7 @@ modSimulator<-function(datStart=NULL,
       multiplierMean=1
       sdJumpDistr=multRange/1.96*sqrt(1-ar1ParMult^2)
       # simulation
-      X=arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
+      X=stats::arima.sim(n = datInd[[modelTag[mod]]]$nyr*12, list(ar =ar1ParMult),sd = sdJumpDistr)
       X=X@.Data+multiplierMean # extract data and add on mean
       multSim=rep(NA,datInd[[modelTag[mod]]]$ndays)
       for(iy in 1:datInd[[modelTag[mod]]]$nyr){
@@ -63,13 +117,13 @@ modSimulator<-function(datStart=NULL,
   # set.seed(seed)
   # seeds$wdstatus<-runif((ndays),0,1)
   # seeds$rainamount<-runif((ndays),0,1)
-  # seeds$residuals<-rnorm(n=(ndays),mean=0,sd=1)
+  # seeds$residuals<-stats::rnorm(n=(ndays),mean=0,sd=1)
   
   #LOOP OVER EACH STOCHASTIC MODEL NOMINATED
   out=list()
   
   for(mod in 1:length(modelTag)){
-    randomVector <- runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
+    randomVector <- stats::runif(n=datInd[[modelTag[mod]]]$ndays) # Random vector to be passed into weather generator to reduce runtime
     #IF CONDITIONED ON DRY-WET STATUS, populate wdStatus
     switch(simVar[mod], #
            "P" = {wdStatus=NULL},
@@ -107,7 +161,7 @@ modSimulator<-function(datStart=NULL,
   
   #WRITE TO FILE
   if(IOmode!="suppress"){
-    write.table(simDat,file=file,row.names=FALSE,quote = FALSE,sep=",")
+    utils::write.table(simDat,file=file,row.names=FALSE,quote = FALSE,sep=",")
   }
 
   return(simDat)

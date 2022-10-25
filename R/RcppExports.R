@@ -2,14 +2,14 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 Pstatus_WGEN_cpp <- function(parPwd, parPdd, RN, ndays) {
-    .Call(`_foreSIGHT_Pstatus_WGEN_cpp`, parPwd, parPdd, RN, ndays)
+    .Call('_foreSIGHT_Pstatus_WGEN_cpp', PACKAGE = 'foreSIGHT', parPwd, parPdd, RN, ndays)
 }
 
 latentX_calc_cpp <- function(parAlpha, epsilonT, ndays) {
-    .Call(`_foreSIGHT_latentX_calc_cpp`, parAlpha, epsilonT, ndays)
+    .Call('_foreSIGHT_latentX_calc_cpp', PACKAGE = 'foreSIGHT', parAlpha, epsilonT, ndays)
 }
 
 residualGenerator_cpp <- function(RN_res, parCor1) {
-    .Call(`_foreSIGHT_residualGenerator_cpp`, RN_res, parCor1)
+    .Call('_foreSIGHT_residualGenerator_cpp', PACKAGE = 'foreSIGHT', RN_res, parCor1)
 }
 

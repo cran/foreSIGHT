@@ -75,7 +75,7 @@ saveTarget<-function(data=NULL,       # data[[i]]  ->    $P, $Temp $attSim $targ
   save(simDat,modelTag,modelInfo,attSel,attPrim,attSim,targetSimulated,targetRequested,seed,par,file=paste(paths$RData,"/",fnam,".RData",sep=""))
   
   #WRITE OUTPUT CSV
-  write.table(simDat,file=paste(paths$CSV,"/",fnam,".csv",sep=""),row.names=FALSE,quote = FALSE,sep=",")  
+  utils::write.table(simDat,file=paste(paths$CSV,"/",fnam,".csv",sep=""),row.names=FALSE,quote = FALSE,sep=",")  
     
   return(fnam)
 }
@@ -122,7 +122,7 @@ writeToCSV<-function(data=NULL,
   outDat=makeOutputDataframe(data=data,dates=dates,simVar=simVar,modelTag=modelTag)
   
   #WRITE OUTPUT CSV
-  write.table(outDat,file=filename,row.names=FALSE,quote = FALSE,sep=",")
+  utils::write.table(outDat,file=filename,row.names=FALSE,quote = FALSE,sep=",")
   
 }
 

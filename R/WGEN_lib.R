@@ -25,6 +25,7 @@ switch_simulator<-function(type=NULL,          # what vartype is being simulated
                            parS=NULL,
                            modelEnv = NULL,
                            randomVector = NULL,
+                           randomUnitNormalVector = NULL,
                            wdSeries=NULL,      
                            resid_ts=NULL,
                            seed=NULL
@@ -36,7 +37,7 @@ switch_simulator<-function(type=NULL,          # what vartype is being simulated
            switch(strsplit(modelTag, split="-")[[1]][3],
                         "latent" = { P_latent_master(parS=parS,
                                                      modelEnv = modelEnv$P_modelEnv,
-                                                     randomVector = randomVector)
+                                                     randomUnitNormalVector = randomUnitNormalVector)
                           },
                         {
                           P_WGEN_master(parS=parS,              #RAIN SELECTED
@@ -164,7 +165,7 @@ Pamount_WGEN <- function(parAlpha=NULL,         # vector of pars for alpha (leng
   set.seed(N)     # seed seed to fix input needed for rgamma  ---  this creates a challenge for passing in a vector of random numbers
   rain <- vector(mode="numeric", ndays)  #allocate time series
   wet.days<-which(status_ts==1)         #index wet occurance
-  rain[wet.days] <- rgamma(parAlpha[wet.days],shape=parAlpha[wet.days],scale=parBeta[wet.days])   #sample rain amount
+  rain[wet.days] <- stats::rgamma(parAlpha[wet.days],shape=parAlpha[wet.days],scale=parBeta[wet.days])   #sample rain amount
   syntP <- list(sim=rain,  #
                 seed=N)       
   return(syntP)
@@ -175,8 +176,11 @@ Pamount_WGEN <- function(parAlpha=NULL,         # vector of pars for alpha (leng
 
 P_latent_master <- function(parS,                 # vector of pars (will change in optim)
                             modelEnv,
-                            randomVector = NULL
+                            randomVector = NULL,             # can specify random noise as uniform
+                            randomUnitNormalVector = NULL    # OR can specify random noise as Gaussian
 ) {
+  
+  if (is.null(randomUnitNormalVector)){randomUnitNormalVector=stats::qnorm(randomVector)}
   
   # Converts supplied pars into required format (e.g. if harmonic applied)
   class(parS) <- "latent"
@@ -184,7 +188,7 @@ P_latent_master <- function(parS,                 # vector of pars (will change 
   
   # Simulate rainfall timeseries
   sim <- P_latent(parTS = parTS,                 # wgen parameters
-                  randomVector = randomVector)   # random vector of length ndays
+                  randomUnitNormalVector = randomUnitNormalVector)   # random vector of length ndays
   
   return(sim)  #return simulated rainfall
   
@@ -192,7 +196,7 @@ P_latent_master <- function(parS,                 # vector of pars (will change 
 
 
 P_latent <- function(parTS,                  # list of parameters
-                     randomVector = NULL
+                     randomUnitNormalVector = NULL
 ) {
   
   # Unpack WGEN parameters
@@ -200,10 +204,11 @@ P_latent <- function(parTS,                  # list of parameters
   parSigma <- parTS$sigma
   parMu <- parTS$mu
   parLambda <- parTS$lambda
-  ndays <- length(randomVector)
+  ndays <- length(randomUnitNormalVector)
   
   # Calculate latent variable - latentX
-  epsilonT <- qnorm(randomVector, mean = 0, sd = parSigma)
+#  epsilonT <- qnorm(randomVector, mean = 0, sd = parSigma)
+  epsilonT <- randomUnitNormalVector*parSigma
   latentX <- latentX_calc_cpp(parAlpha, epsilonT, ndays)
   latentX <- latentX + parMu
   
@@ -212,7 +217,7 @@ P_latent <- function(parTS,                  # list of parameters
   latentX_pos_ind <- which(latentX > 0)
   rain[latentX_pos_ind] <- latentX[latentX_pos_ind] ^ parLambda[latentX_pos_ind]
   
-  syntP <- list(sim = rain)       
+  syntP <- list(sim = rain)  
   return(syntP)
   
 }
@@ -353,7 +358,7 @@ residualGenerator<-function(parCor0=NULL,
   #GENERATE RANDOM NUMBERS FROM A STANDARD NORMAL (MEAN=0, STD=1)
   
   if(nAssocSeries==0){  #if just one series
-    RN_res<-qnorm(randomVector, mean=0, sd=1)
+    RN_res<-stats::qnorm(randomVector, mean=0, sd=1)
     res_gen <- residualGenerator_cpp(RN_res, parCor1)
     
   }else{
